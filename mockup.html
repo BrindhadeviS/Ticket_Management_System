@@ -1,0 +1,2788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ladera TMS — Ticket Management System</title>
+<style>
+:root {
+  --bg: #f5f3fa;
+  --sf: #ffffff;
+  --tx: #231c38;
+  --mu: #6b6485;
+  --ln: #e4dfef;
+  --pu: #6854b4;
+  --pu-h: #5744a1;
+  --pu2: #ede8fb;
+  --pu3: #dad0f8;
+  --nav: #251e3c;
+  --nav-h: #352b54;
+  --nm: #d6cee9;
+  --gr: #1e7e48;
+  --grb: #e6f6ed;
+  --am: #925f08;
+  --amb: #fef5dc;
+  --bl: #1e6b99;
+  --blb: #e8f4fc;
+  --rd: #aa3226;
+  --rdb: #fdeeed;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--tx);
+  font: 13.5px/1.45 Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  overflow: hidden;
+}
+button, input, select, textarea { font: inherit; }
+button { cursor: pointer; }
+
+/* Top Preview Bar */
+.pv {
+  height: 44px;
+  background: #fff;
+  border-bottom: 1px solid var(--ln);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 18px;
+  z-index: 10;
+  position: relative;
+}
+.pv b { font-weight: 750; font-size: 14px; }
+.pv span.t { color: var(--mu); font-size: 12px; }
+.rs { display: flex; gap: 6px; align-items: center; }
+.rs button {
+  border: 1px solid transparent;
+  background: none;
+  color: var(--mu);
+  padding: 5px 12px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.15s;
+}
+.rs button:hover { background: var(--pu2); color: var(--pu); }
+.rs button.on { background: var(--pu); color: #fff; font-weight: 700; }
+
+/* Shell Layout */
+.shell { display: flex; height: calc(100vh - 44px); width: 100vw; }
+
+/* Sidebar */
+aside {
+  width: 236px;
+  flex: none;
+  background: var(--nav);
+  color: var(--nm);
+  display: flex;
+  flex-direction: column;
+  padding: 14px 10px 12px;
+  border-right: 1px solid #1a152b;
+}
+.logo {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 4px 8px 16px;
+}
+.li {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: var(--pu);
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-weight: 800;
+  font-size: 15px;
+  flex: none;
+  box-shadow: 0 2px 8px rgba(104, 84, 180, 0.4);
+}
+.logo b { color: #fff; font-size: 14.5px; display: block; font-weight: 750; letter-spacing: -0.2px; }
+.logo small { font-size: 10.5px; opacity: 0.75; }
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  overflow-y: auto;
+}
+.nav button {
+  border: 0;
+  background: none;
+  color: var(--nm);
+  text-align: left;
+  padding: 9px 11px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  transition: all 0.15s ease;
+}
+.nav button:hover { background: #ffffff14; color: #fff; }
+.nav button.on { background: var(--pu); color: #fff; font-weight: 700; }
+.nav button .nav-ic { font-size: 14px; width: 18px; text-align: center; flex: none; }
+.nav button .nt { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nav-badge {
+  background: #543ea0;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 10px;
+  margin-left: auto;
+}
+.nav button.on .nav-badge { background: #fff; color: var(--pu); }
+
+/* Sidebar User Footer */
+.me {
+  border-top: 1px solid #ffffff1a;
+  padding-top: 11px;
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.av {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--pu);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 12px;
+  flex: none;
+}
+.me div { min-width: 0; flex: 1; }
+.me b { color: #fff; display: block; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.me small { font-size: 11px; opacity: 0.75; }
+.me button {
+  border: 0;
+  background: #ffffff14;
+  color: #fff;
+  border-radius: 7px;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  transition: background 0.15s;
+}
+.me button:hover { background: #ffffff26; }
+
+/* Main Area */
+main {
+  flex: 1;
+  min-width: 0;
+  padding: 14px 20px;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  gap: 12px;
+}
+
+/* Page Header */
+.ph0 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--ln);
+  flex: none;
+}
+.ph0 h1 { margin: 0; font-size: 21px; font-weight: 760; letter-spacing: -0.3px; color: var(--tx); }
+.ph0 p { margin: 2px 0 0; color: var(--mu); font-size: 12px; }
+
+/* Buttons */
+.btn {
+  border: 1px solid var(--ln);
+  background: #fff;
+  color: var(--tx);
+  padding: 7px 13px;
+  border-radius: 7px;
+  font-size: 12.5px;
+  font-weight: 650;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+.btn:hover { background: #faf9fd; border-color: #d8d0e8; }
+.btn.p { background: var(--pu); border-color: var(--pu); color: #fff; }
+.btn.p:hover { background: var(--pu-h); }
+.btn.g { background: var(--gr); border-color: var(--gr); color: #fff; }
+.btn.g:hover { background: #19693c; }
+.btn.d { background: var(--rdb); border-color: #f2c7c2; color: var(--rd); }
+.btn.d:hover { background: #fbe0dc; }
+.btn.s { padding: 5px 10px; font-size: 11.5px; }
+
+/* Content grid */
+.ct {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+}
+
+/* Stat Cards */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  width: 100%;
+}
+.stat {
+  background: var(--sf);
+  border: 1px solid var(--ln);
+  border-radius: 9px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-left: 4px solid var(--c, var(--pu));
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+  user-select: none;
+  position: relative;
+}
+.stat:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 14px rgba(104, 84, 180, 0.14);
+  border-color: var(--pu3);
+}
+.stat div span {
+  font-size: 12px;
+  color: var(--mu);
+  font-weight: 650;
+  display: block;
+  margin-bottom: 3px;
+}
+.stat div small {
+  font-size: 10.5px;
+  color: var(--pu);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.stat b { font-size: 22px; font-weight: 800; color: var(--tx); }
+
+/* Layout Grids */
+.g2 { display: grid; grid-template-columns: 1.55fr 1fr; gap: 12px; }
+.g3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.g2s { display: grid; grid-template-columns: 1.4fr 1fr; gap: 12px; }
+
+/* Panels */
+.panel {
+  background: var(--sf);
+  border: 1px solid var(--ln);
+  border-radius: 9px;
+  overflow: hidden;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 12px; /* added interior padding */
+}
+.ph {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--ln);
+  background: #fff;
+  flex: none;
+}
+.ph h2 { margin: 0; font-size: 13.5px; font-weight: 750; color: var(--tx); }
+.pb { padding: 12px 14px; flex: 1; }
+
+/* Header Navigation Links */
+.all-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--pu3);
+  background: var(--pu2);
+  color: var(--pu);
+  font-size: 11.5px;
+  font-weight: 750;
+  padding: 4px 9px;
+  border-radius: 6px;
+  transition: all 0.15s;
+  text-decoration: none;
+}
+.all-nav-btn:hover {
+  background: var(--pu);
+  color: #fff;
+  border-color: var(--pu);
+}
+
+/* Tables */
+table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+th {
+  text-align: left;
+  background: #f8f6fd;
+  color: var(--mu);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--ln);
+}
+td {
+  padding: 8px 12px;
+  border-top: 1px solid #f2edf8;
+  vertical-align: middle;
+}
+tbody tr { cursor: pointer; transition: background 0.1s; }
+tbody tr:hover { background: #faf8ff; }
+.id { font-weight: 750; color: var(--pu); font-family: ui-monospace, SFMono-Regular, monospace; font-size: 12px; }
+.sb {
+  display: inline-block;
+  padding: 2.5px 8px;
+  border-radius: 20px;
+  font-size: 10.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.pr { font-weight: 700; font-size: 11.5px; }
+.High { color: var(--rd); }
+.Medium { color: var(--am); }
+.Low { color: var(--gr); }
+
+/* Donut Chart */
+.chart {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  justify-content: center;
+}
+.donut {
+  width: 118px;
+  height: 118px;
+  border-radius: 50%;
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+.donut:before {
+  content: "";
+  position: absolute;
+  inset: 24px;
+  background: #fff;
+  border-radius: 50%;
+}
+.donut b, .donut small { position: relative; grid-area: 1/1; }
+.donut b { font-size: 22px; margin-top: -8px; font-weight: 800; }
+.donut small { margin-top: 24px; font-size: 10px; color: var(--mu); font-weight: 600; }
+.legend { display: grid; gap: 5px; font-size: 12px; flex: 1; }
+.legend div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 6px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.legend div:hover { background: var(--pu2); }
+.legend i { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.legend b { margin-left: auto; padding-left: 10px; font-weight: 750; }
+
+/* Action Required & List items */
+.act-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1px solid #fae6e1;
+  background: #fffbfa;
+  cursor: pointer;
+  transition: all 0.12s;
+  margin-bottom: 6px;
+}
+.act-item:hover {
+  background: #fff3f0;
+  border-color: #f6c8c0;
+  transform: translateX(2px);
+}
+.act-item b { font-size: 12.5px; color: var(--tx); display: block; }
+.act-item p { margin: 2px 0 0; font-size: 11.5px; color: var(--mu); }
+.act-badge {
+  background: #fbebe8;
+  color: var(--rd);
+  border: 1px solid #f6cfc9;
+  font-size: 10.5px;
+  font-weight: 750;
+  padding: 3px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+/* Bars & Charts */
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f2edf8;
+}
+.row:last-child { border: 0; }
+.row b { display: block; font-size: 12px; }
+.row small { color: var(--mu); font-size: 11px; }
+.vb {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  gap: 8px;
+  height: 124px;
+  padding: 6px 6px 0;
+}
+.vb div {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+  font-size: 11px;
+  color: var(--mu);
+  text-align: center;
+}
+.vb i {
+  display: block;
+  width: 70%;
+  max-width: 36px;
+  background: var(--pu);
+  border-radius: 5px 5px 0 0;
+  margin-bottom: 4px;
+  transition: height 0.3s;
+}
+.vb b { color: var(--tx); font-size: 12px; font-weight: 750; }
+.bar {
+  height: 7px;
+  border-radius: 4px;
+  background: var(--pu2);
+  margin-top: 4px;
+  overflow: hidden;
+}
+.bar i { display: block; height: 100%; background: var(--pu); border-radius: 4px; }
+
+/* Filter & Search Toolbar */
+.tool {
+  display: flex;
+  gap: 10px;
+  background: #fff;
+  border: 1px solid var(--ln);
+  border-radius: 9px;
+  padding: 10px 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.f {
+  border: 1px solid var(--ln);
+  border-radius: 7px;
+  padding: 7px 11px;
+  font-size: 12.5px;
+  background: #fff;
+  min-width: 140px;
+  color: var(--tx);
+}
+.f:focus { outline: none; border-color: var(--pu); box-shadow: 0 0 0 2px var(--pu2); }
+.f.s { flex: 1; min-width: 200px; }
+
+/* Pagination Bar */
+.pag-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  border-top: 1px solid var(--ln);
+  background: #faf9fd;
+  font-size: 12px;
+  color: var(--mu);
+}
+.pag-ctrl { display: flex; gap: 5px; align-items: center; }
+.pag-btn {
+  border: 1px solid var(--ln);
+  background: #fff;
+  color: var(--tx);
+  padding: 4px 9px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 650;
+  min-width: 28px;
+  text-align: center;
+}
+.pag-btn:hover:not(:disabled) { background: var(--pu2); color: var(--pu); border-color: var(--pu3); }
+.pag-btn.active { background: var(--pu); color: #fff; border-color: var(--pu); }
+.pag-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Form Components */
+.fg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px 14px; }
+.ff { display: grid; gap: 5px; align-content: start; }
+.ff.w { grid-column: 1 / -1; }
+.ff.w2 { grid-column: span 2; }
+.ff label, .k { font-size: 11px; font-weight: 700; color: var(--mu); text-transform: uppercase; letter-spacing: 0.4px; }
+.ff input, .ff textarea, .ff select {
+  border: 1px solid var(--ln);
+  border-radius: 7px;
+  padding: 8px 11px;
+  font-size: 13px;
+  width: 100%;
+  color: var(--tx);
+  background: #fff;
+}
+.ff input:focus, .ff textarea:focus, .ff select:focus {
+  outline: none;
+  border-color: var(--pu);
+  box-shadow: 0 0 0 2px var(--pu2);
+}
+.ff textarea { min-height: 80px; resize: vertical; }
+.req { color: #d32f2f; margin-right: 3px; font-weight: 800; }
+.v { font-weight: 650; font-size: 13px; }
+
+/* Dropdowns / Autocomplete */
+.dd { position: relative; }
+.ddb {
+  border: 1px solid var(--ln);
+  border-radius: 7px;
+  padding: 8px 11px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.ddb span { flex: 1; }
+.ddb .pl { color: #9c97ad; }
+.ddb i { color: #9c97ad; font-style: normal; font-size: 15px; font-weight: 700; }
+.ddb u { text-decoration: none; color: #6b6485; }
+.dd.dis .ddb { background: #f6f5fa; cursor: not-allowed; color: #aaa; }
+.dd.op .ddb { border-color: var(--pu); box-shadow: 0 0 0 2px var(--pu2); }
+.dm {
+  position: absolute;
+  z-index: 20;
+  left: 0;
+  right: 0;
+  top: 100%;
+  margin-top: 4px;
+  background: #ffffff;
+  border: 1px solid var(--ln);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(43, 36, 71, 0.18);
+  padding: 8px;
+}
+.dm input {
+  width: 100%;
+  border: 1px solid var(--pu);
+  border-radius: 6px;
+  padding: 7px 10px;
+  margin-bottom: 6px;
+  font-size: 12.5px;
+}
+.o { padding: 8px 10px; border-radius: 6px; font-size: 12.5px; cursor: pointer; }
+.o:hover, .o.sel { background: var(--pu2); color: var(--pu); font-weight: 600; }
+
+/* Attachments */
+.att {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 11px;
+  border: 1px solid var(--ln);
+  border-radius: 8px;
+  background: #fff;
+}
+.att span { flex: 1; font-weight: 650; font-size: 12.5px; }
+.att small { color: var(--mu); font-size: 11px; }
+.ib {
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--ln);
+  background: #fff;
+  border-radius: 6px;
+  color: var(--pu);
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  transition: all 0.12s;
+}
+.ib:hover { background: var(--pu2); border-color: var(--pu); }
+
+/* Timeline & History */
+.tl {
+  border-left: 2px solid #d9d1f0;
+  margin-left: 6px;
+  padding: 0 0 10px 14px;
+  position: relative;
+}
+.tl:before {
+  content: "";
+  position: absolute;
+  left: -5px;
+  top: 3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--pu);
+}
+.tl b { font-size: 12.5px; color: var(--tx); }
+.tl p { margin: 2px 0 0; color: var(--mu); font-size: 11.5px; }
+.tl .tl-note {
+  margin-top: 4px;
+  background: #f7f5fc;
+  border: 1px solid #ebe5f6;
+  border-radius: 6px;
+  padding: 6px 9px;
+  font-size: 12px;
+  color: #3b3254;
+}
+
+/* Clarification Box */
+.clar-box {
+  background: #fdfcff;
+  border: 1px solid #e2dbf3;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+}
+.clar-box.q { border-left: 4px solid var(--am); background: #fffdf8; }
+.clar-box.a { border-left: 4px solid var(--gr); background: #f9fdfa; margin-left: 12px; }
+.clar-meta { display: flex; justify-content: space-between; font-size: 11px; color: var(--mu); margin-bottom: 4px; }
+.clar-text { font-size: 12.5px; color: var(--tx); line-height: 1.4; }
+
+/* Modals */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(35, 28, 56, 0.55);
+  backdrop-filter: blur(2px);
+  z-index: 100;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.modal-card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 18px 45px rgba(28, 20, 50, 0.28);
+  width: 100%;
+  max-width: 680px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: popIn 0.15s ease-out;
+}
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+.modal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--ln);
+  background: #faf8fd;
+}
+.modal-head h3 { margin: 0; font-size: 15px; font-weight: 750; color: var(--tx); }
+.modal-body { padding: 16px 18px; overflow-y: auto; flex: 1; }
+.modal-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--ln);
+  background: #faf8fd;
+}
+
+/* Image preview graphic inside modal */
+.img-preview-box {
+  background: #1e222b;
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 280px;
+  color: #fff;
+  box-shadow: inset 0 2px 8px rgba(0,0,0,0.4);
+}
+
+/* Login Page */
+#login {
+  position: fixed;
+  inset: 44px 0 0;
+  display: flex;
+  background: #fff;
+  z-index: 30;
+}
+.lb {
+  flex: 1.2;
+  background: linear-gradient(150deg, #251e3c 0%, #6854b4 100%);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 60px;
+}
+.lb h2 { font-size: 32px; margin: 14px 0 10px; font-weight: 800; }
+.lb p { opacity: 0.9; max-width: 440px; font-size: 14px; line-height: 1.5; }
+.lb li { margin: 8px 0; opacity: 0.95; font-size: 13.5px; }
+.lf {
+  width: 460px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 14px;
+  padding: 0 50px;
+}
+.lf h3 { font-size: 24px; margin: 0; font-weight: 750; }
+.pw { position: relative; }
+.pw button {
+  position: absolute;
+  right: 8px;
+  top: 7px;
+  border: 0;
+  background: none;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+/* Toast & Banner */
+#bn:empty { display: none; }
+#bn {
+  background: var(--grb);
+  border: 1px solid #bfe3cc;
+  color: var(--gr);
+  border-radius: 9px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  flex: none;
+}
+#bn code {
+  background: #fff;
+  border: 1px solid #bfe3cc;
+  border-radius: 6px;
+  padding: 3px 9px;
+  font-weight: 800;
+  font-size: 13.5px;
+  letter-spacing: 0.5px;
+}
+#bn span { flex: 1; }
+#bn button { border: 0; background: none; font-size: 17px; color: var(--gr); }
+
+#toast {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  background: var(--nav);
+  color: #fff;
+  padding: 11px 18px;
+  border-radius: 9px;
+  font-size: 12.5px;
+  font-weight: 600;
+  display: none;
+  z-index: 200;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+  animation: popIn 0.15s ease-out;
+}
+
+@media (max-width: 1024px) {
+  .g2, .g3, .g2s { grid-template-columns: 1fr; }
+  .stats { grid-template-columns: repeat(2, 1fr); }
+  .fg { grid-template-columns: 1fr 1fr; }
+  .lb { display: none; }
+  .lf { width: 100%; }
+}
+</style>
+</head>
+<body>
+
+<!-- Preview Role Switcher Bar -->
+<div class="pv">
+  <div><b>Ladera TMS</b> <span class="t">· Interactive System Mockup</span></div>
+  <div class="rs">
+    <span class="t">Preview as Role:</span>
+    <button data-r="admin">Admin</button>
+    <button data-r="employee">Employee</button>
+    <button data-r="approver">Approver</button>
+    <button data-r="support">Support Team</button>
+  </div>
+</div>
+
+<!-- Sign In Screen -->
+<div id="login">
+  <div class="lb">
+    <div class="logo" style="padding:0">
+      <div class="li">T</div>
+      <div><b style="font-size:18px">Ladera TMS</b></div>
+    </div>
+    <h2>Raise it. Approve it. Resolve it.</h2>
+    <p>A centralized organization-wide portal to submit tickets, manage multi-level approvals, handle clarifications, and track resolutions with full transparency.</p>
+    <ul>
+      <li>Role-based dashboards & personalized landing pages</li>
+      <li>Instant interactive summary cards with deep-filtered navigation</li>
+      <li>Dedicated clarification workflows with audit history</li>
+      <li>In-app notifications and image attachment preview popups</li>
+    </ul>
+  </div>
+  <form class="lf" onsubmit="event.preventDefault();signin()">
+    <h3>Sign in to TMS</h3>
+    <span style="color:var(--mu);margin-bottom:6px">Use your corporate Ladera credentials to continue.</span>
+    <div class="ff">
+      <label>Email Address</label>
+      <input id="em" type="email" required>
+    </div>
+    <div class="ff">
+      <label>Password</label>
+      <div class="pw">
+        <input id="pwd" type="password" value="Temp@1234" required>
+        <button type="button" onclick="pwd.type=pwd.type=='password'?'text':'password'">👁</button>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <a href="#" onclick="toast('Password reset link sent to registered email');return false" style="color:var(--pu);font-weight:700;font-size:12px;text-decoration:none">Forgot password?</a>
+    </div>
+    <button class="btn p" style="padding:10px;font-size:13.5px;justify-content:center;margin-top:6px">Sign in</button>
+  </form>
+</div>
+
+<!-- Application Shell -->
+<div class="shell">
+  <!-- Sidebar -->
+  <aside>
+    <div class="logo">
+      <div class="li">T</div>
+      <div>
+        <b>Ladera TMS</b>
+        <small>Ticket Management</small>
+      </div>
+    </div>
+    <nav class="nav" id="nav"></nav>
+    <div class="me">
+      <div class="av" id="mav"></div>
+      <div>
+        <b id="mn"></b>
+        <small id="mr"></small>
+      </div>
+      <button title="Sign out" onclick="logout()">⏻</button>
+    </div>
+  </aside>
+
+  <!-- Main Content Workspace -->
+  <main>
+    <div id="bn"></div>
+    <div class="ph0">
+      <div>
+        <h1 id="pt"></h1>
+        <p id="ps"></p>
+      </div>
+      <div id="pa"></div>
+    </div>
+    <section class="ct" id="v"></section>
+  </main>
+</div>
+
+<!-- Image Preview Modal -->
+<div class="modal-backdrop" id="imgModal" onclick="closeImgModal(event)">
+  <div class="modal-card" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <h3 id="imgModalTitle">Image Preview</h3>
+      <button class="btn s" onclick="closeImgModal()" style="border:none;font-size:16px">✕</button>
+    </div>
+    <div class="modal-body" id="imgModalBody"></div>
+    <div class="modal-foot">
+      <button class="btn s" id="imgModalDownloadBtn">⬇ Download File</button>
+      <button class="btn p s" onclick="closeImgModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Action Dialog Modal (Rejection / Clarification) -->
+<div class="modal-backdrop" id="actionModal" onclick="closeActionModal(event)">
+  <div class="modal-card" style="max-width:540px" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <h3 id="actionModalTitle">Action</h3>
+      <button class="btn s" onclick="closeActionModal()" style="border:none;font-size:16px">✕</button>
+    </div>
+    <div class="modal-body" id="actionModalBody"></div>
+    <div class="modal-foot" id="actionModalFoot"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const toast = m => {
+  const t = $("toast");
+  t.textContent = m;
+  t.style.display = "block";
+  setTimeout(() => t.style.display = "none", 2200);
+};
+
+/* Profiles */
+const P = {
+  admin: ["Brindha", "Admin", "brindha@ladera.com"],
+  employee: ["James Wilson", "Employee", "james.wilson@ladera.com"],
+  approver: ["Sarah Chen", "Approver", "sarah.chen@ladera.com"],
+  support: ["David Kim", "Support Team", "david.kim@ladera.com"]
+};
+
+/* Unread Notifications Count */
+const UNREAD_NOTIF_COUNT = 3;
+
+/* Navigation configuration per role
+   Admin, Approver and Support Team sidebar order:
+   1. All Tickets Dashboard
+   2. My Dashboard
+   Add My Tickets to Approver sidebar.
+*/
+const N = {
+  admin: [
+    ["all_dash", "◫", "All Tickets Dashboard"],
+    ["my_dash", "▦", "My Dashboard"],
+    ["emps", "♙", "Employees"],
+    ["all", "▤", "All Tickets"],
+    ["new", "＋", "New Ticket"],
+    ["mine", "▣", "My Tickets"],
+    ["notif", "♧", "Notifications"]
+  ],
+  employee: [
+    ["my_dash", "▦", "Dashboard"],
+    ["new", "＋", "New Ticket"],
+    ["mine", "▣", "My Tickets"],
+    ["notif", "♧", "Notifications"]
+  ],
+  approver: [
+    ["all_dash", "◫", "All Tickets Dashboard"],
+    ["my_dash", "▦", "My Dashboard"],
+    ["appr", "✓", "Pending Approvals"],
+    ["mine", "▣", "My Tickets"],
+    ["new", "＋", "New Ticket"],
+    ["notif", "♧", "Notifications"]
+  ],
+  support: [
+    ["all_dash", "◫", "All Tickets Dashboard"],
+    ["my_dash", "▦", "My Dashboard"],
+    ["pool", "▤", "Ticket Pool"],
+    ["asg", "◷", "My Assigned Work"],
+    ["mine", "▣", "My Tickets"],
+    ["new", "＋", "New Ticket"],
+    ["notif", "♧", "Notifications"]
+  ]
+};
+
+/* Ticket Dataset (24 records with realistic details, attachments, and histories) */
+const T = [
+  {
+    id: "TKT-1001",
+    d: "VPN access gateway dropouts",
+    by: "James Wilson",
+    dp: "Engineering",
+    p: "High",
+    s: "Clarification Needed",
+    a: "David Kim",
+    dt: "14 Nov 2026",
+    desc: "Unable to reach the internal staging server over Cisco AnyConnect VPN since morning. The session drops every 3 to 5 minutes with Error Code 412.",
+    cat: "Network & Connectivity › VPN › Cannot Connect",
+    f: [["vpn_client.log", "24 KB", "file"], ["error_screenshot.png", "182 KB", "image"]],
+    history: [
+      { t: "Ticket created", by: "James Wilson (Employee)", dt: "14 Nov 09:15" },
+      { t: "Approved by manager", by: "Sarah Chen (Approver)", dt: "14 Nov 09:40" },
+      { t: "Assigned to Support", by: "David Kim (Support Team)", dt: "14 Nov 10:00" },
+      { t: "Clarification requested", by: "David Kim (Support Team)", dt: "14 Nov 10:25", note: "Please attach your Cisco AnyConnect diagnostic log and verify if you are on fiber or 5G broadband." }
+    ],
+    clarifications: [
+      {
+        q: "Please attach your Cisco AnyConnect diagnostic log and verify if you are on fiber or 5G broadband.",
+        by: "David Kim (Support Team)",
+        dt: "14 Nov 10:25",
+        ans: "",
+        ansDt: ""
+      }
+    ]
+  },
+  {
+    id: "TKT-1002",
+    d: "AWS production database latency spike",
+    by: "Brindha",
+    dp: "IT Operations",
+    p: "High",
+    s: "In Progress",
+    a: "David Kim",
+    dt: "14 Nov 2026",
+    desc: "Aurora PostgreSQL query response times doubled following the midnight maintenance window. High CPU utilization observed on reader replica.",
+    cat: "Others › Cloud › Performance",
+    f: [["latency_report.pdf", "310 KB", "file"]],
+    history: [
+      { t: "Ticket created", by: "Brindha (Admin)", dt: "14 Nov 08:30" },
+      { t: "Assigned directly to Support", by: "David Kim (Support Team)", dt: "14 Nov 08:45" }
+    ],
+    clarifications: []
+  },
+  {
+    id: "TKT-1003",
+    d: "Developer high-spec laptop provisioning",
+    by: "James Wilson",
+    dp: "Engineering",
+    p: "Medium",
+    s: "Pending Approval",
+    a: "—",
+    dt: "13 Nov 2026",
+    desc: "New joiner in backend systems team needs a MacBook Pro 16-inch with 32 GB RAM for local containerized Kubernetes simulation.",
+    cat: "Hardware & Devices › Laptop › New Laptop Request",
+    f: [["spec_requirement.pdf", "85 KB", "file"]],
+    history: [
+      { t: "Ticket created", by: "James Wilson (Employee)", dt: "13 Nov 14:10" }
+    ],
+    clarifications: []
+  },
+  {
+    id: "TKT-1004",
+    d: "Annual Figma enterprise license renewal",
+    by: "Brindha",
+    dp: "IT Operations",
+    p: "Low",
+    s: "Resolved",
+    a: "David Kim",
+    dt: "12 Nov 2026",
+    desc: "Annual subscription renewal for 20 editor seats for product design team.",
+    cat: "Software & Applications › Software Installation & Updates › Need New Software Installed",
+    f: [["license_list.xlsx", "46 KB", "file"]],
+    history: [
+      { t: "Ticket created", by: "Brindha (Admin)", dt: "12 Nov 10:00" },
+      { t: "Assigned to Support", by: "David Kim", dt: "12 Nov 11:30" },
+      { t: "Resolved", by: "David Kim", dt: "12 Nov 16:45", note: "License invoice approved and keys provisioned." }
+    ],
+    clarifications: []
+  },
+  {
+    id: "TKT-1005",
+    d: "Outlook email repeated password prompt",
+    by: "Priya Kumar",
+    dp: "HR",
+    p: "Medium",
+    s: "Open",
+    a: "Unassigned",
+    dt: "12 Nov 2026",
+    desc: "Outlook desktop client repeatedly asks for credentials every 15 minutes despite entering correct domain password.",
+    cat: "Accounts & Access › Email › Login Issue",
+    f: [],
+    history: [
+      { t: "Ticket created", by: "Priya Kumar (HR)", dt: "12 Nov 11:20" },
+      { t: "Manager Approved", by: "Sarah Chen", dt: "12 Nov 12:00" }
+    ],
+    clarifications: []
+  },
+  {
+    id: "TKT-1006",
+    d: "2nd floor network printer scan-to-email failing",
+    by: "James Wilson",
+    dp: "Engineering",
+    p: "Low",
+    s: "Pending Approval",
+    a: "—",
+    dt: "11 Nov 2026",
+    desc: "Scan-to-email returns SMTP relay connection failure on Ricoh multi-function printer near bay 2B.",
+    cat: "Printing & Scanning › Scanner › Scan to Email",
+    f: [["printer_error.jpg", "96 KB", "image"]],
+    history: [
+      { t: "Ticket created", by: "James Wilson (Employee)", dt: "11 Nov 16:30" }
+    ],
+    clarifications: []
+  },
+  {
+    id: "TKT-1007",
+    d: "Visual Studio 2022 Professional installation",
+    by: "James Wilson",
+    dp: "Engineering",
+    p: "Medium",
+    s: "Pending Approval",
+    a: "—",
+    dt: "11 Nov 2026",
+    desc: "Required for legacy .NET framework service maintenance. Installer prompts for local administrative credentials.",
+    cat: "Software & Applications › Software Installation & Updates › Prompted for Admin Password to Update",
+    f: [],
+    history: [
+      { t: "Ticket created", by: "James Wilson (Employee)", dt: "11 Nov 15:00" }
+    ],
+    clarifications: []
+  },
+  {
+    id: "TKT-1008",
+    d: "Finance wing Wi-Fi frequent disconnects",
+    by: "Meera Nair",
+    dp: "Finance",
+    p: "High",
+    s: "Pending Approval",
+    a: "—",
+    dt: "10 Nov 2026",
+    desc: "Wi-Fi access point in 3rd floor Finance meeting room drops connections during Zoom meetings.",
+    cat: "Network & Connectivity › Wi-Fi › Frequent Disconnects",
+    f: [],
+    history: [
+      { t: "Ticket created", by: "Meera Nair (Finance)", dt: "10 Nov 09:30" }
+    ],
+    clarifications: []
+  },
+  {
+    id: "TKT-1009",
+    d: "Request secondary 27-inch 4K monitor",
+    by: "Brindha",
+    dp: "IT Operations",
+    p: "Low",
+    s: "Open",
+    a: "Unassigned",
+    dt: "10 Nov 2026",
+    desc: "Second monitor required for operations monitoring dashboard.",
+    cat: "Hardware & Devices › Monitor › New Request",
+    f: [],
+    history: [
+      { t: "Ticket created", by: "Brindha (Admin)", dt: "10 Nov 11:15" }
+    ],
+    clarifications: []
+  },
+  {
+    id: "TKT-1010",
+    d: "Docker desktop license renewal failure",
+    by: "James Wilson",
+    dp: "Engineering",
+    p: "Medium",
+    s: "In Progress",
+    a: "David Kim",
+    dt: "09 Nov 2026",
+    desc: "Docker Desktop displays expired enterprise token error on local workstation.",
+    cat: "Software & Applications › Software Installation & Updates › Need New Software Installed",
+    f: [],
+    history: [
+      { t: "Ticket created", by: "James Wilson", dt: "09 Nov 10:00" },
+      { t: "Approved", by: "Sarah Chen", dt: "09 Nov 11:15" },
+      { t: "Assigned to Support", by: "David Kim", dt: "09 Nov 14:00" }
+    ],
+    clarifications: []
+  },
+  {
+    id: "TKT-1011",
+    d: "HR portal permission error for payroll module",
+    by: "Priya Kumar",
+    dp: "HR",
+    p: "High",
+    s: "Clarification Needed",
+    a: "David Kim",
+    dt: "09 Nov 2026",
+    desc: "Unable to access the monthly tax computation sub-module in Ladera HR ERP.",
+    cat: "Software & Applications › Ladera Business Applications (ERP, HR, Finance) › HR Portal Issue",
+    f: [["access_denied_err.png", "145 KB", "image"]],
+    history: [
+      { t: "Ticket created", by: "Priya Kumar", dt: "09 Nov 14:00" },
+      { t: "Assigned to Support", by: "David Kim", dt: "09 Nov 15:30" },
+      { t: "Clarification requested", by: "David Kim", dt: "09 Nov 16:00", note: "Please verify if your employee ID was recently mapped to payroll division B." }
+    ],
+    clarifications: [
+      {
+        q: "Please verify if your employee ID was recently mapped to payroll division B.",
+        by: "David Kim (Support Team)",
+        dt: "09 Nov 16:00",
+        ans: "",
+        ansDt: ""
+      }
+    ]
+  },
+  {
+    id: "TKT-1012",
+    d: "Budget planning spreadsheet macro security block",
+    by: "Sarah Chen",
+    dp: "Finance",
+    p: "Medium",
+    s: "Open",
+    a: "Unassigned",
+    dt: "08 Nov 2026",
+    desc: "Excel disables fiscal forecasting VBA macros citing untrusted untagged source file.",
+    cat: "Software & Applications › Microsoft Office 365 › Excel Issue",
+    f: [],
+    history: [
+      { t: "Ticket created", by: "Sarah Chen (Approver)", dt: "08 Nov 11:00" }
+    ],
+    clarifications: []
+  },
+  {
+    id: "TKT-1013",
+    d: "Finance SAP client installation on new laptop",
+    by: "Meera Nair",
+    dp: "Finance",
+    p: "Medium",
+    s: "In Progress",
+    a: "David Kim",
+    dt: "08 Nov 2026",
+    desc: "Need SAP GUI 7.70 installed and configured for production instance connection.",
+    cat: "Software & Applications › Ladera Business Applications (ERP, HR, Finance) › ERP Access",
+    f: [],
+    history: [
+      { t: "Ticket created", by: "Meera Nair", dt: "08 Nov 13:40" },
+      { t: "Approved", by: "Sarah Chen", dt: "08 Nov 14:10" },
+      { t: "Assigned to Support", by: "David Kim", dt: "08 Nov 15:00" }
+    ],
+    clarifications: []
+  },
+  {
+    id: "TKT-1014",
+    d: "Replacement battery for Dell Latitude",
+    by: "James Wilson",
+    dp: "Engineering",
+    p: "Low",
+    s: "Pending Approval",
+    a: "—",
+    dt: "07 Nov 2026",
+    desc: "Laptop battery health indicator reports degraded capacity under 40% holding charge.",
+    cat: "Hardware & Devices › Laptop › Battery / Charger",
+    f: [["battery_health.png", "110 KB", "image"]],
+    history: [
+      { t: "Ticket created", by: "James Wilson", dt: "07 Nov 10:20" }
+    ],
+    clarifications: []
+  },
+  {
+    id: "TKT-1015",
+    d: "Conference room Zoom Rooms audio echoing",
+    by: "Brindha",
+    dp: "IT Operations",
+    p: "Medium",
+    s: "Open",
+    a: "Unassigned",
+    dt: "07 Nov 2026",
+    desc: "Boardroom mic array exhibits severe feedback when dual audio outputs are connected.",
+    cat: "Software & Applications › Communication & Meetings (Zoom, Webex, etc.) › Zoom Issue",
+    f: [],
+    history: [
+      { t: "Ticket created", by: "Brindha (Admin)", dt: "07 Nov 16:00" }
+    ],
+    clarifications: []
+  },
+  {
+    id: "TKT-1016",
+    d: "Quarterly financial database backup verification",
+    by: "Sarah Chen",
+    dp: "Finance",
+    p: "High",
+    s: "In Progress",
+    a: "David Kim",
+    dt: "06 Nov 2026",
+    desc: "Verify disaster recovery backup snapshot restore in sandbox environment.",
+    cat: "Others › General › Other Request",
+    f: [],
+    history: [
+      { t: "Ticket created", by: "Sarah Chen (Approver)", dt: "06 Nov 09:15" },
+      { t: "Assigned to Support", by: "David Kim", dt: "06 Nov 10:00" }
+    ],
+    clarifications: []
+  },
+  {
+    id: "TKT-1017",
+    d: "GitHub Enterprise SSO token expired",
+    by: "James Wilson",
+    dp: "Engineering",
+    p: "High",
+    s: "Clarification Needed",
+    a: "David Kim",
+    dt: "06 Nov 2026",
+    desc: "Git command line push rejected with 403 Forbidden SAML credential expiration.",
+    cat: "Accounts & Access › Password & MFA › MFA Reset",
+    f: [],
+    history: [
+      { t: "Ticket created", by: "James Wilson", dt: "06 Nov 11:30" },
+      { t: "Approved", by: "Sarah Chen", dt: "06 Nov 12:00" },
+      { t: "Assigned to Support", by: "David Kim", dt: "06 Nov 13:00" },
+      { t: "Clarification requested", by: "David Kim", dt: "06 Nov 14:15", note: "Please confirm your Okta user handle and whether your phone authenticator is active." }
+    ],
+    clarifications: [
+      {
+        q: "Please confirm your Okta user handle and whether your phone authenticator is active.",
+        by: "David Kim (Support Team)",
+        dt: "06 Nov 14:15",
+        ans: "",
+        ansDt: ""
+      }
+    ]
+  },
+  {
+    id: "TKT-1018",
+    d: "New network switch firmware deployment",
+    by: "David Kim",
+    dp: "IT Infrastructure",
+    p: "Medium",
+    s: "Open",
+    a: "Unassigned",
+    dt: "05 Nov 2026",
+    desc: "Scheduled maintenance patch for core rack switches in server room 2.",
+    cat: "Network & Connectivity › Wi-Fi › No Signal",
+    f: [],
+    history: [
+      { t: "Ticket created", by: "David Kim (Support Team)", dt: "05 Nov 10:00" }
+    ],
+    clarifications: []
+  },
+  {
+    id: "TKT-1019",
+    d: "Security patch reboot schedule for Windows servers",
+    by: "Brindha",
+    dp: "IT Operations",
+    p: "Low",
+    s: "Resolved",
+    a: "David Kim",
+    dt: "05 Nov 2026",
+    desc: "Monthly patch Tuesday reboot schedule confirmed with department heads.",
+    cat: "Others › General › Other Request",
+    f: [],
+    history: [
+      { t: "Ticket created", by: "Brindha", dt: "05 Nov 11:00" },
+      { t: "Resolved", by: "David Kim", dt: "05 Nov 17:30", note: "Reboot completed cleanly." }
+    ],
+    clarifications: []
+  },
+  {
+    id: "TKT-1020",
+    d: "Dual display HDMI to DisplayPort adapter request",
+    by: "Meera Nair",
+    dp: "Finance",
+    p: "Low",
+    s: "Pending Approval",
+    a: "—",
+    dt: "04 Nov 2026",
+    desc: "Adapter required to connect Dell dock to second display unit.",
+    cat: "Hardware & Devices › Monitor › Display Issue",
+    f: [],
+    history: [
+      { t: "Ticket created", by: "Meera Nair", dt: "04 Nov 15:45" }
+    ],
+    clarifications: []
+  },
+  {
+    id: "TKT-1021",
+    d: "Node.js build failure on local Linux VM",
+    by: "James Wilson",
+    dp: "Engineering",
+    p: "Medium",
+    s: "In Progress",
+    a: "David Kim",
+    dt: "04 Nov 2026",
+    desc: "Node-gyp compilation failure on native bindings when running test suites.",
+    cat: "Software & Applications › Software Installation & Updates › Software is Missing from PC",
+    f: [["build_log.txt", "52 KB", "file"]],
+    history: [
+      { t: "Ticket created", by: "James Wilson", dt: "04 Nov 16:30" },
+      { t: "Approved", by: "Sarah Chen", dt: "04 Nov 17:00" },
+      { t: "Assigned to Support", by: "David Kim", dt: "05 Nov 09:30" }
+    ],
+    clarifications: []
+  },
+  {
+    id: "TKT-1022",
+    d: "Finance tax filing portal whitelist in proxy",
+    by: "Sarah Chen",
+    dp: "Finance",
+    p: "High",
+    s: "Open",
+    a: "Unassigned",
+    dt: "03 Nov 2026",
+    desc: "State revenue department online portal blocked by firewall URL categorization.",
+    cat: "Accounts & Access › Password & MFA › Password Reset",
+    f: [],
+    history: [
+      { t: "Ticket created", by: "Sarah Chen (Approver)", dt: "03 Nov 10:00" }
+    ],
+    clarifications: []
+  },
+  {
+    id: "TKT-1023",
+    d: "Server rack UPS battery replacement test",
+    by: "David Kim",
+    dp: "IT Infrastructure",
+    p: "Medium",
+    s: "Resolved",
+    a: "David Kim",
+    dt: "03 Nov 2026",
+    desc: "Load test executed successfully with 45 minutes backup endurance.",
+    cat: "Hardware & Devices › Laptop › Battery / Charger",
+    f: [],
+    history: [
+      { t: "Ticket created", by: "David Kim", dt: "03 Nov 11:30" },
+      { t: "Resolved", by: "David Kim", dt: "03 Nov 16:00", note: "UPS battery cells verified." }
+    ],
+    clarifications: []
+  },
+  {
+    id: "TKT-1024",
+    d: "Office 365 Teams client video lag during calls",
+    by: "Arjun Mehta",
+    dp: "Engineering",
+    p: "Low",
+    s: "Resolved",
+    a: "David Kim",
+    dt: "02 Nov 2026",
+    desc: "Hardware acceleration glitch caused frame stuttering in video calls.",
+    cat: "Software & Applications › Microsoft Office 365 › Teams Issue",
+    f: [],
+    history: [
+      { t: "Ticket created", by: "Arjun Mehta", dt: "02 Nov 14:00" },
+      { t: "Resolved", by: "David Kim", dt: "02 Nov 17:15", note: "Disabled GPU hardware acceleration in Teams settings." }
+    ],
+    clarifications: []
+  }
+];
+
+/* Status Color Palette */
+const SC = {
+  "Open": "#5b6bd6",
+  "In Progress": "#3b8fc4",
+  "Pending Approval": "#df9d24",
+  "Clarification Needed": "#a45bc7",
+  "Resolved": "#2f9e63",
+  "Rejected": "#c9463a"
+};
+
+const SB = {
+  "Open": ["#e9edff", "#454f9b"],
+  "In Progress": ["var(--blb)", "var(--bl)"],
+  "Pending Approval": ["var(--amb)", "var(--am)"],
+  "Clarification Needed": ["#f4eafa", "#7b3996"],
+  "Resolved": ["var(--grb)", "var(--gr)"],
+  "Rejected": ["var(--rdb)", "var(--rd)"]
+};
+
+/* Employee Directory */
+const E = [
+  ["James Wilson", "EMP-101", "Engineering", "Employee", 8, 1],
+  ["Sarah Chen", "EMP-102", "Finance", "Approver", 3, 1],
+  ["David Kim", "EMP-103", "IT Infrastructure", "Support Team", 2, 1],
+  ["Brindha", "EMP-100", "IT Operations", "Admin", 5, 1],
+  ["Priya Kumar", "EMP-104", "HR", "Employee", 2, 1],
+  ["Arjun Mehta", "EMP-105", "Engineering", "Employee", 1, 1],
+  ["Meera Nair", "EMP-106", "Finance", "Employee", 3, 1],
+  ["Ravi Shankar", "EMP-107", "IT Infrastructure", "Support Team", 0, 0]
+];
+
+/* Category Taxonomy */
+const CAT = {
+  "Accounts & Access": {
+    "Email": ["Login Issue", "Mailbox Full"],
+    "Password & MFA": ["Password Reset", "MFA Reset"]
+  },
+  "Hardware & Devices": {
+    "Laptop": ["New Laptop Request", "Battery / Charger"],
+    "Monitor": ["New Request", "Display Issue"]
+  },
+  "Network & Connectivity": {
+    "VPN": ["Cannot Connect", "Slow Connection"],
+    "Wi-Fi": ["Frequent Disconnects", "No Signal"]
+  },
+  "Others": {
+    "General": ["Other Request"],
+    "Cloud": ["Performance", "Provisioning"]
+  },
+  "Printing & Scanning": {
+    "Printer": ["Not Printing", "Paper Jam"],
+    "Scanner": ["Scan to Email", "Scanner Offline"]
+  },
+  "Software & Applications": {
+    "Communication & Meetings (Zoom, Webex, etc.)": ["Zoom Issue", "Webex Issue"],
+    "Ladera Business Applications (ERP, HR, Finance)": ["ERP Access", "HR Portal Issue"],
+    "Microsoft Office 365": ["Outlook Issue", "Teams Issue", "Excel Issue"],
+    "Software Installation & Updates": ["Need New Software Installed", "Prompted for Admin Password to Update", "Software is Missing from PC"],
+    "Web Browsers (Chrome, Edge)": ["Chrome Issue", "Edge Issue"]
+  }
+};
+
+/* Global state */
+let selectedTicketId = null;
+
+/* Select ticket for inline view */
+function selectTicket(id){
+  selectedTicketId = id;
+  render();
+}
+
+/* Table State & Filters */
+let tblSearch = "";
+let tblStatus = "All Statuses";
+let tblPriority = "All Priorities";
+let tblDept = "All Departments";
+let curPage = 1;
+const PAGE_SIZE = 10;
+let customFilteredTickets = null;
+let customFilterTitle = "";
+let customFilterReturnPage = "";
+
+/* Utility functions */
+const cnt = (arr, s) => arr.filter(t => t.s === s).length;
+const ini = n => n.split(" ").map(x => x[0]).join("").slice(0, 2);
+const sb = s => `<span class="sb" style="background:${(SB[s]||SB.Open)[0]};color:${(SB[s]||SB.Open)[1]}">${s}</span>`;
+const pr = p => `<span class="pr ${p}">${p}</span>`;
+const mine = () => T.filter(t => t.by === P[role][0]);
+
+/* Column definitions for tables */
+const C = {
+  id: ["ID", t => `<span class="id">${t.id}</span>`],
+  d: ["Short Description", t => `<b>${t.d}</b>`],
+  by: ["Raised By", t => t.by],
+  dp: ["Department", t => t.dp],
+  p: ["Priority", t => pr(t.p)],
+  s: ["Status", t => sb(t.s)],
+  a: ["Assigned", t => t.a],
+  dt: ["Created", t => t.dt],
+  go: ["", () => `<span style="color:var(--pu);font-weight:700">›</span>`]
+};
+
+/* Summary stat cards with click-to-filter navigation */
+function statsBar(items) {
+  return `<div class="stats">${items.map(x => `
+    <div class="stat" style="--c:${x[2] || 'var(--pu)'}" onclick="${x[3] || ''}" title="Click to view filtered tickets">
+      <div>
+        <span>${x[0]}</span>
+        <small>View tickets ↗</small>
+      </div>
+      <b>${x[1]}</b>
+    </div>
+  `).join("")}</div>`;
+}
+
+/* Card Click Handler - navigates to filtered ticket list */
+function filterByCard(title, filterFn, returnPage) {
+  customFilterTitle = title;
+  customFilterReturnPage = returnPage || page;
+  customFilteredTickets = T.filter(filterFn);
+  curPage = 1;
+  tblSearch = "";
+  tblStatus = "All Statuses";
+  tblPriority = "All Priorities";
+  tblDept = "All Departments";
+  page = "filtered_list";
+  render();
+}
+
+/* Panels */
+function pan(title, body, allLinkAction, allLinkText) {
+  let navBtn = "";
+  if (allLinkAction) {
+    const txt = allLinkText || "All";
+    navBtn = `<button class="all-nav-btn" onclick="${allLinkAction}">${txt} ↗</button>`;
+  }
+  return `<div class="panel">
+    <div class="ph">
+      <h2>${title}</h2>
+      ${navBtn}
+    </div>
+    ${body}
+  </div>`;
+}
+
+/* Table preview (limited to top 5 rows without action buttons) */
+function previewTb(rows, cols) {
+  const displayRows = rows.slice(0, 5);
+  if (!displayRows.length) {
+    return `<div class="pb" style="text-align:center;color:var(--mu);padding:20px">No ticket records found.</div>`;
+  }
+  return `<table>
+    <thead><tr>${cols.map(c => `<th>${c[0]}</th>`).join("")}</tr></thead>
+    <tbody>
+      ${displayRows.map(t => `<tr onclick="detail('${t.id}')">${cols.map(c => `<td>${c[1](t)}</td>`).join("")}</tr>`).join("")}
+    </tbody>
+  </table>`;
+}
+
+/* Full Table with Search, Filter & Pagination */
+function fullTable(dataset, cols, title, showStatusFilter = true) {
+  let filtered = dataset.filter(t => {
+    const q = tblSearch.toLowerCase().trim();
+    const mQ = !q || t.id.toLowerCase().includes(q) || t.d.toLowerCase().includes(q) || t.by.toLowerCase().includes(q) || t.cat.toLowerCase().includes(q);
+    const mS = tblStatus === "All Statuses" || t.s === tblStatus;
+    const mP = tblPriority === "All Priorities" || t.p === tblPriority;
+    const mD = tblDept === "All Departments" || t.dp === tblDept;
+    return mQ && mS && mP && mD;
+  });
+
+  const total = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  if (curPage > totalPages) curPage = totalPages;
+  const startIdx = (curPage - 1) * PAGE_SIZE;
+  const pageRows = filtered.slice(startIdx, startIdx + PAGE_SIZE);
+
+  const depts = ["Engineering", "Finance", "HR", "IT Operations", "IT Infrastructure"];
+
+  return `
+    <div class="tool">
+      <input class="f s" id="tblSearchInput" value="${tblSearch}" oninput="onFilterChange('search', this.value)" placeholder="Search by Ticket ID, description, or submitter...">
+      ${showStatusFilter ? `
+        <select class="f" onchange="onFilterChange('status', this.value)">
+          <option ${tblStatus == "All Statuses" ? "selected" : ""}>All Statuses</option>
+          ${Object.keys(SC).map(k => `<option ${tblStatus == k ? "selected" : ""}>${k}</option>`).join("")}
+        </select>
+      ` : ""}
+      <select class="f" onchange="onFilterChange('priority', this.value)">
+        <option ${tblPriority == "All Priorities" ? "selected" : ""}>All Priorities</option>
+        <option ${tblPriority == "High" ? "selected" : ""}>High</option>
+        <option ${tblPriority == "Medium" ? "selected" : ""}>Medium</option>
+        <option ${tblPriority == "Low" ? "selected" : ""}>Low</option>
+      </select>
+      <select class="f" onchange="onFilterChange('dept', this.value)">
+        <option ${tblDept == "All Departments" ? "selected" : ""}>All Departments</option>
+        ${depts.map(d => `<option ${tblDept == d ? "selected" : ""}>${d}</option>`).join("")}
+      </select>
+    </div>
+
+    <div class="panel">
+      <div class="ph">
+        <h2>${title} <span style="color:var(--mu);font-weight:600;font-size:12px">(${total} total records)</span></h2>
+      </div>
+      ${pageRows.length ? `
+        <table>
+          <thead><tr>${cols.map(c => `<th>${c[0]}</th>`).join("")}</tr></thead>
+          <tbody>
+            ${pageRows.map(t => `<tr onclick="detail('${t.id}')">${cols.map(c => `<td>${c[1](t)}</td>`).join("")}</tr>`).join("")}
+          </tbody>
+        </table>
+      ` : `
+        <div style="padding:32px;text-align:center;color:var(--mu)">
+          <b>No tickets match the selected filters.</b>
+          <p style="margin:4px 0 0;font-size:12px">Try adjusting your search criteria or resetting filters.</p>
+        </div>
+      `}
+      <div class="pag-bar">
+        <span>Showing <b>${total ? startIdx + 1 : 0}</b> to <b>${Math.min(startIdx + PAGE_SIZE, total)}</b> of <b>${total}</b> records</span>
+        <div class="pag-ctrl">
+          <button class="pag-btn" ${curPage <= 1 ? "disabled" : ""} onclick="changePage(${curPage - 1})">Previous</button>
+          ${Array.from({ length: totalPages }, (_, i) => i + 1).map(pNum => `
+            <button class="pag-btn ${pNum === curPage ? "active" : ""}" onclick="changePage(${pNum})">${pNum}</button>
+          `).join("")}
+          <button class="pag-btn" ${curPage >= totalPages ? "disabled" : ""} onclick="changePage(${curPage + 1})">Next</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function onFilterChange(type, val) {
+  if (type === "search") tblSearch = val;
+  if (type === "status") tblStatus = val;
+  if (type === "priority") tblPriority = val;
+  if (type === "dept") tblDept = val;
+  curPage = 1;
+  render();
+}
+
+function changePage(p) {
+  curPage = p;
+  render();
+}
+
+/* Donut Chart with Interactive Legend */
+function donutChart(items, label, filterReturnPage) {
+  const tot = items.reduce((a, x) => a + x[1], 0);
+  let acc = 0;
+  const gradientParts = items.filter(x => x[1]).map(x => {
+    const s = acc;
+    acc += (x[1] / tot) * 100;
+    return `${x[2]} ${s}% ${acc}%`;
+  }).join(",");
+
+  return `
+    <div class="chart">
+      <div class="donut" style="background:conic-gradient(${gradientParts || '#eee 0% 100%'})">
+        <b>${tot}</b>
+        <small>${label || "Tickets"}</small>
+      </div>
+      <div class="legend">
+        ${items.map(x => `
+          <div onclick="filterByCard('${x[0]} Tickets', t => t.s === '${x[0]}', '${filterReturnPage || page}')" title="Filter by ${x[0]}">
+            <i style="background:${x[2]}"></i>
+            <span>${x[0]}</span>
+            <b>${x[1]}</b>
+          </div>
+        `).join("")}
+      </div>
+    </div>
+  `;
+}
+
+/* Visual Bar Charts */
+function group(a, fn) {
+  const o = {};
+  a.forEach(t => {
+    const k = fn(t);
+    o[k] = (o[k] || 0) + 1;
+  });
+  return Object.entries(o).sort((x, y) => y[1] - x[1]);
+}
+
+function hBars(items) {
+  const m = Math.max(...items.map(x => x[1]), 1);
+  return items.map(x => `
+    <div style="margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:600">
+        <span>${x[0]}</span>
+        <b>${x[1]}</b>
+      </div>
+      <div class="bar"><i style="width:${(x[1] / m) * 100}%"></i></div>
+    </div>
+  `).join("");
+}
+
+function vBars(items) {
+  const m = Math.max(...items.map(x => x[1]), 1);
+  return `
+    <div class="vb">
+      ${items.map(x => `
+        <div>
+          <b>${x[1]}</b>
+          <i style="height:${Math.max(6, (x[1] / m) * 85)}px"></i>
+          <span>${x[0]}</span>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
+/* Action Required Section - Clarifications Only */
+function renderActionRequired(userTickets) {
+  const clarificationTickets = userTickets.filter(t => t.s === "Clarification Needed");
+  if (!clarificationTickets.length) {
+    return `<div style="padding:18px;text-align:center;color:var(--mu);font-size:12px">
+      ✓ No pending clarifications required from you.
+    </div>`;
+  }
+  return `<div style="display:grid;gap:6px">
+    ${clarificationTickets.map(t => {
+      const latestQ = (t.clarifications && t.clarifications[t.clarifications.length - 1]) ? t.clarifications[t.clarifications.length - 1].q : "Additional details requested by support.";
+      return `
+        <div class="act-item" onclick="detail('${t.id}')">
+          <div style="min-width:0;flex:1">
+            <b>${t.id} · ${t.d}</b>
+            <p style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">“${latestQ}”</p>
+          </div>
+          <span class="act-badge">Respond ↗</span>
+        </div>
+      `;
+    }).join("")}
+  </div>`;
+}
+
+/* Cascading Category Selector */
+function dd(k, l, ph) {
+  const dis = (k == "s" && !f.c) || (k == "i" && !f.s);
+  return `
+    <div class="ff">
+      <label><span class="req">*</span>${l}</label>
+      <div class="dd ${dis ? "dis" : ""} ${open == k ? "op" : ""}">
+        <div class="ddb" onclick="${dis ? "" : `ddo('${k}')`}">
+          <span class="${f[k] ? "" : "pl"}">${f[k] || ph}</span>
+          ${f[k] ? `<i onclick="event.stopPropagation();dds('${k}','')">×</i>` : ""}
+          <u>⌄</u>
+        </div>
+        ${open == k ? `
+          <div class="dm">
+            <input id="ddq" oninput="ddl('${k}',this.value)" placeholder="Search ${l}...">
+            <div id="ddl">${ddi(k, "")}</div>
+          </div>
+        ` : ""}
+      </div>
+    </div>
+  `;
+}
+
+const opts = k => k == "c" ? Object.keys(CAT) : k == "s" && f.c ? Object.keys(CAT[f.c]) : k == "i" && f.s ? CAT[f.c][f.s] : [];
+const ddi = (k, q) => opts(k).filter(o => o.toLowerCase().includes(q.toLowerCase())).map(o => `
+  <div class="o ${f[k] == o ? "sel" : ""}" data-v="${o}" onclick="dds('${k}',this.dataset.v)">${o}</div>
+`).join("");
+
+const casc = () => dd("c", "Category", "-- Select Category --") + dd("s", "Sub Category", "-- Select Sub Category --") + dd("i", "Item", "-- Select Item --");
+
+function cr() {
+  const c = $("casc");
+  if (c) {
+    c.innerHTML = casc();
+    const q = $("ddq");
+    if (q) q.focus();
+  }
+}
+function ddo(k) { open = open == k ? null : k; cr(); }
+function ddl(k, q) { $("ddl").innerHTML = ddi(k, q); }
+function dds(k, v) {
+  f[k] = v;
+  if (k == "c") { f.s = ""; f.i = ""; }
+  if (k == "s") f.i = "";
+  open = null;
+  cr();
+}
+document.addEventListener("click", e => {
+  if (open && !e.target.closest(".dd")) {
+    open = null;
+    cr();
+  }
+});
+
+/* Attachments */
+const atl = () => ef.map((z, i) => `
+  <div class="att">
+    📎 <span>${z[0]}</span>
+    <small>${z[1]}</small>
+    <button type="button" class="ib" title="Remove attachment" onclick="rmF(${i})">×</button>
+  </div>
+`).join("");
+
+function rmF(i) { ef.splice(i, 1); $("atl").innerHTML = atl(); }
+function addF(el) {
+  [...el.files].forEach(x => {
+    const isImg = x.type.startsWith("image/") || /\.(png|jpe?g|gif|svg|webp)$/i.test(x.name);
+    ef.push([x.name, Math.max(1, Math.round(x.size / 1024)) + " KB", isImg ? "image" : "file"]);
+  });
+  el.value = "";
+  $("atl").innerHTML = atl();
+}
+
+/* Image Preview Modal Logic */
+function openImageModal(fileName, fileSize) {
+  $("imgModalTitle").textContent = `${fileName} (${fileSize})`;
+  $("imgModalBody").innerHTML = `
+    <div class="img-preview-box">
+      <svg width="240" height="150" viewBox="0 0 240 150" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="240" height="150" rx="8" fill="#292e3b"/>
+        <rect x="12" y="12" width="216" height="24" rx="4" fill="#3b4254"/>
+        <circle cx="24" cy="24" r="4" fill="#ea5b5b"/>
+        <circle cx="36" cy="24" r="4" fill="#eab35b"/>
+        <circle cx="48" cy="24" r="4" fill="#5bea7b"/>
+        <rect x="20" y="48" width="120" height="12" rx="3" fill="#6d5bb8"/>
+        <rect x="20" y="68" width="180" height="8" rx="2" fill="#505a72"/>
+        <rect x="20" y="82" width="150" height="8" rx="2" fill="#505a72"/>
+        <rect x="20" y="96" width="170" height="8" rx="2" fill="#505a72"/>
+        <rect x="20" y="118" width="70" height="18" rx="4" fill="#c9463a"/>
+        <text x="32" y="131" font-size="9" fill="#fff" font-weight="bold">ERROR 412</text>
+      </svg>
+      <div style="margin-top:14px;text-align:center">
+        <b style="font-size:13px">${fileName}</b>
+        <p style="margin:4px 0 0;font-size:11.5px;color:#a0a7ba">High-resolution attachment preview</p>
+      </div>
+    </div>
+  `;
+  $("imgModalDownloadBtn").onclick = () => {
+    toast(`Downloading ${fileName}...`);
+  };
+  $("imgModal").style.display = "flex";
+}
+function closeImgModal(e) {
+  if (!e || e.target === $("imgModal") || e.target.tagName === "BUTTON") {
+    $("imgModal").style.display = "none";
+  }
+}
+
+/* Action Dialog Modal Logic (Approver Reject & Clarification Request) */
+function openActionModal(title, bodyHtml, confirmBtnText, onConfirm) {
+  $("actionModalTitle").textContent = title;
+  $("actionModalBody").innerHTML = bodyHtml;
+  $("actionModalFoot").innerHTML = `
+    <button class="btn s" onclick="closeActionModal()">Cancel</button>
+    <button class="btn p s" id="actionModalConfirmBtn">${confirmBtnText}</button>
+  `;
+  $("actionModalConfirmBtn").onclick = onConfirm;
+  $("actionModal").style.display = "flex";
+  const inp = $("actionModalBody").querySelector("textarea, input");
+  if (inp) inp.focus();
+}
+function closeActionModal(e) {
+  if (!e || e.target === $("actionModal") || e.target.tagName === "BUTTON") {
+    $("actionModal").style.display = "none";
+  }
+}
+
+/* Workflow Actions on Tickets */
+function approverApprove(ticketId) {
+  const tk = T.find(t => t.id === ticketId);
+  if (!tk) return;
+  tk.s = "Open";
+  tk.a = "Unassigned";
+  tk.history.push({
+    t: "Approved by manager",
+    by: `${P[role][0]} (Approver)`,
+    dt: "Today",
+    note: "Ticket approved and routed directly to Support Team pool."
+  });
+  toast(`Ticket ${ticketId} approved!`);
+  detail(ticketId);
+}
+
+function approverReject(ticketId) {
+  openActionModal(
+    `Reject Ticket · ${ticketId}`,
+    `
+      <div class="ff">
+        <label><span class="req">*</span>Rejection Reason (Required)</label>
+        <textarea id="rejReasonInput" placeholder="Specify clear reason for rejecting this ticket..." style="min-height:90px"></textarea>
+      </div>
+      <p style="color:var(--mu);font-size:11.5px;margin:6px 0 0">The submitter will receive this rejection note in their history log.</p>
+    `,
+    "Confirm Rejection",
+    () => {
+      const reason = $("rejReasonInput").value.trim();
+      if (!reason) {
+        toast("Please provide a rejection reason.");
+        $("rejReasonInput").focus();
+        return;
+      }
+      const tk = T.find(t => t.id === ticketId);
+      if (tk) {
+        tk.s = "Rejected";
+        tk.history.push({
+          t: "Rejected by manager",
+          by: `${P[role][0]} (Approver)`,
+          dt: "Today",
+          note: `Reason: ${reason}`
+        });
+      }
+      closeActionModal();
+      toast(`Ticket ${ticketId} rejected.`);
+      detail(ticketId);
+    }
+  );
+}
+
+function requestClarification(ticketId) {
+  openActionModal(
+    `Request Clarification · ${ticketId}`,
+    `
+      <div class="ff">
+        <label><span class="req">*</span>Question / Information Needed (Required)</label>
+        <textarea id="clarQuestionInput" placeholder="Detail the specific information, screenshot, or logs needed..." style="min-height:90px"></textarea>
+      </div>
+      <p style="color:var(--mu);font-size:11.5px;margin:6px 0 0">Ticket status will move to 'Clarification Needed' until submitter responds.</p>
+    `,
+    "Send Request",
+    () => {
+      const q = $("clarQuestionInput").value.trim();
+      if (!q) {
+        toast("Please enter your clarification question.");
+        $("clarQuestionInput").focus();
+        return;
+      }
+      const tk = T.find(t => t.id === ticketId);
+      if (tk) {
+        tk.s = "Clarification Needed";
+        if (!tk.clarifications) tk.clarifications = [];
+        tk.clarifications.push({
+          q: q,
+          by: `${P[role][0]} (${P[role][1]})`,
+          dt: "Today",
+          ans: "",
+          ansDt: ""
+        });
+        tk.history.push({
+          t: "Clarification requested",
+          by: `${P[role][0]} (${P[role][1]})`,
+          dt: "Today",
+          note: q
+        });
+      }
+      closeActionModal();
+      toast(`Clarification requested on ${ticketId}.`);
+      detail(ticketId);
+    }
+  );
+}
+
+function submitClarificationResponse(ticketId) {
+  const resp = $("clarResponseInput").value.trim();
+  if (!resp) {
+    toast("Please enter your response before submitting.");
+    $("clarResponseInput").focus();
+    return;
+  }
+  const tk = T.find(t => t.id === ticketId);
+  if (tk) {
+    if (tk.clarifications && tk.clarifications.length) {
+      const last = tk.clarifications[tk.clarifications.length - 1];
+      last.ans = resp;
+      last.ansDt = "Today";
+    }
+    // Return status to In Progress (or Pending Approval if unapproved)
+    tk.s = tk.a && tk.a !== "—" && tk.a !== "Unassigned" ? "In Progress" : "Pending Approval";
+    tk.history.push({
+      t: "Clarification response provided",
+      by: `${P[role][0]} (Submitter)`,
+      dt: "Today",
+      note: resp
+    });
+  }
+  toast("Clarification response submitted!");
+  detail(ticketId);
+}
+
+function takeTicket(ticketId) {
+  const tk = T.find(t => t.id === ticketId);
+  if (!tk) return;
+  tk.a = P[role][0];
+  tk.s = "In Progress";
+  tk.history.push({
+    t: "Ticket claimed from pool",
+    by: `${P[role][0]} (Support Team)`,
+    dt: "Today"
+  });
+  toast(`Ticket ${ticketId} assigned to you.`);
+  detail(ticketId);
+}
+
+function resolveTicket(ticketId) {
+  openActionModal(
+    `Resolve Ticket · ${ticketId}`,
+    `
+      <div class="ff">
+        <label><span class="req">*</span>Resolution Summary</label>
+        <textarea id="resSummaryInput" placeholder="Explain the root cause and steps taken to resolve the issue..." style="min-height:90px"></textarea>
+      </div>
+    `,
+    "Mark as Resolved",
+    () => {
+      const note = $("resSummaryInput").value.trim() || "Resolved according to standard procedures.";
+      const tk = T.find(t => t.id === ticketId);
+      if (tk) {
+        tk.s = "Resolved";
+        tk.history.push({
+          t: "Ticket Resolved",
+          by: `${P[role][0]} (Support Team)`,
+          dt: "Today",
+          note: note
+        });
+      }
+      closeActionModal();
+      toast(`Ticket ${ticketId} marked as Resolved.`);
+      detail(ticketId);
+    }
+  );
+}
+
+/* Detail view navigation */
+function detail(id) {
+  cur = T.find(t => t.id === id);
+  page = "det";
+  render();
+}
+
+/* Edit Ticket */
+function editTk() {
+  edt = cur;
+  const c = cur.cat.split(" › ");
+  f = { c: c[0] || "", s: c[1] || "", i: c[2] || "" };
+  ef = cur.f.map(x => x.slice());
+  page = "new";
+  open = null;
+  render();
+}
+
+/* Save Ticket (Clarification is NOT required on creation) */
+function saveTk() {
+  if (edt) {
+    edt.d = $("sd1").value || edt.d;
+    edt.desc = $("ds1").value;
+    edt.p = $("pr1").value;
+    if (f.c && f.s && f.i) edt.cat = `${f.c} › ${f.s} › ${f.i}`;
+    edt.f = ef.map(x => x.slice());
+    toast("Ticket updated successfully!");
+    const id = edt.id;
+    edt = null;
+    ef = [];
+    detail(id);
+  } else {
+    const isEmployee = role === "employee";
+    const newId = `TKT-${1000 + T.length + 1}`;
+    const newTk = {
+      id: newId,
+      d: $("sd1").value,
+      by: P[role][0],
+      dp: E.find(e => e[0] === P[role][0])?.[2] || "Operations",
+      p: $("pr1").value,
+      // Clarification is never required on creation
+      // Employee tickets require approval; Admin, Approver, Support go directly to pool
+      s: isEmployee ? "Pending Approval" : "Open",
+      a: isEmployee ? "—" : "Unassigned",
+      dt: "Today",
+      desc: $("ds1").value,
+      cat: (f.c && f.s && f.i) ? `${f.c} › ${f.s} › ${f.i}` : "Others › General › Other Request",
+      f: ef.map(x => x.slice()),
+      history: [
+        {
+          t: "Ticket created",
+          by: `${P[role][0]} (${P[role][1]})`,
+          dt: "Today",
+          note: isEmployee ? "Sent to manager for approval." : "Routed directly to Support Team pool."
+        }
+      ],
+      clarifications: []
+    };
+    T.unshift(newTk);
+    toast(isEmployee ? "Ticket submitted for manager approval!" : "Ticket routed to Support Team pool!");
+    ef = [];
+    nav(isEmployee ? "my_dash" : "all_dash");
+  }
+}
+
+/* Delete Ticket */
+function delTk() {
+  const idx = T.findIndex(t => t.id === cur.id);
+  if (idx !== -1) T.splice(idx, 1);
+  toast("Ticket deleted.");
+  nav("mine");
+}
+
+/* Reset Password Demo */
+function resetPwd(n) {
+  const pw = "Tmp@" + Math.floor(1000 + Math.random() * 9000);
+  $("bn").innerHTML = `
+    <span>🔑 Temporary password for <b>${n}</b>: <code>${pw}</code> — user must set a new password on next sign-in.</span>
+    <button class="btn s" onclick="navigator.clipboard&&navigator.clipboard.writeText('${pw}');toast('Password copied to clipboard')">Copy</button>
+    <button title="Dismiss" onclick="$('bn').innerHTML=''">✕</button>
+  `;
+  document.querySelector("main").scrollTo({ top: 0, behavior: "smooth" });
+}
+
+/* Navigation */
+function nav(p) {
+  $("bn").innerHTML = "";
+  edt = null;
+  ef = [];
+  page = p;
+  open = null;
+  curPage = 1;
+  tblSearch = "";
+  render();
+}
+
+/* Authentication */
+function signin() {
+  $("login").style.display = "none";
+  // Default landing page: All Tickets Dashboard for Admin, Approver, Support; Dashboard for Employee
+  page = role === "employee" ? "my_dash" : "all_dash";
+  render();
+}
+
+function logout() {
+  $("login").style.display = "flex";
+  $("em").value = P[role][2];
+}
+
+/* Main Render Routine */
+function render() {
+  const [n, r] = P[role];
+  $("mav").textContent = ini(n);
+  $("mn").textContent = n;
+  $("mr").textContent = r;
+
+  document.querySelectorAll("[data-r]").forEach(b => b.classList.toggle("on", b.dataset.r == role));
+
+  /* Render sidebar navigation items with notification badge */
+  $("nav").innerHTML = N[role].map(x => {
+    const isNotif = x[0] === "notif";
+    return `
+      <button class="${page == x[0] ? "on" : ""}" onclick="nav('${x[0]}')">
+        <span class="nav-ic">${x[1]}</span>
+        <span class="nt">${x[2]}</span>
+        ${isNotif ? `<span class="nav-badge">${UNREAD_NOTIF_COUNT}</span>` : ""}
+      </button>
+    `;
+  }).join("");
+
+  let t = "", s = "", a = "", b = "";
+  const m = mine();
+  const newBtn = `<button class="btn p" onclick="nav('new')">＋ New Ticket</button>`;
+
+  /* ----------------------------------------------------
+     1. ALL TICKETS DASHBOARD (Default for Admin, Approver, Support)
+     ---------------------------------------------------- */
+  if (page === "all_dash") {
+    t = "All Tickets Dashboard";
+    s = "Organization-wide ticket intelligence and management overview.";
+    a = newBtn;
+
+    const needsAppr = cnt(T, "Pending Approval");
+    const inClar = cnt(T, "Clarification Needed");
+    const inProg = cnt(T, "In Progress");
+    const resolved = cnt(T, "Resolved");
+
+    // Clickable interactive summary cards
+    const statsHtml = statsBar([
+      ["Total Tickets", T.length, "var(--pu)", `filterByCard('Total Tickets', () => true, 'all_dash')`],
+      ["Needs Approval", needsAppr, SC["Pending Approval"], `filterByCard('Needs Approval Tickets', t => t.s === 'Pending Approval', 'all_dash')`],
+      ["Clarification", inClar, SC["Clarification Needed"], `filterByCard('Clarification Tickets', t => t.s === 'Clarification Needed', 'all_dash')`],
+      ["Resolved", resolved, SC.Resolved, `filterByCard('Resolved Tickets', t => t.s === 'Resolved', 'all_dash')`]
+    ]);
+
+    // Preview table of all tickets with "All ↗" link
+    const previewTable = previewTb(T, [C.id, C.d, C.by, C.p, C.s, C.dt]);
+
+    b = statsHtml + `
+      <div class="g2">
+        ${pan("All Tickets Preview", previewTable, "nav('all')", "All")}
+        ${pan("Tickets by Status", donutChart(Object.keys(SC).map(k => [k, cnt(T, k), SC[k]]).filter(x => x[1]), "Tickets", "all_dash"))}
+      </div>
+      <div class="g3">
+        ${pan("Attention Items", renderActionRequired(T), "nav('all')", "All")}
+        ${pan("Tickets by Category", hBars(group(T, x => x.cat.split(" › ")[0].replace(" & ", "/"))))}
+        ${pan("Tickets by Department", vBars(group(T, x => x.dp)))}
+      </div>
+    `;
+  }
+
+  /* ----------------------------------------------------
+     2. MY DASHBOARD (Only tickets created by logged-in user)
+     ---------------------------------------------------- */
+  else if (page === "my_dash") {
+    t = role === "employee" ? "Employee Dashboard" : "My Dashboard";
+    s = "Tickets raised by you across the organization.";
+    a = newBtn;
+
+    const myPending = cnt(m, "Pending Approval");
+    const myInProg = cnt(m, "In Progress");
+    const myResolved = cnt(m, "Resolved");
+
+    // Clickable interactive summary cards
+    const statsHtml = statsBar([
+      ["My Tickets", m.length, "var(--pu)", `filterByCard('My Tickets', t => t.by === '${P[role][0]}', 'my_dash')`],
+      ["Pending Approval", myPending, SC["Pending Approval"], `filterByCard('My Pending Approvals', t => t.by === '${P[role][0]}' && t.s === 'Pending Approval', 'my_dash')`],
+      ["In Progress", myInProg, SC["In Progress"], `filterByCard('My In Progress Tickets', t => t.by === '${P[role][0]}' && t.s === 'In Progress', 'my_dash')`],
+      ["Resolved", myResolved, SC.Resolved, `filterByCard('My Resolved Tickets', t => t.by === '${P[role][0]}' && t.s === 'Resolved', 'my_dash')`]
+    ]);
+
+    // Preview table of user's tickets with "All ↗" link to My Tickets
+    const previewTable = previewTb(m, [C.id, C.d, C.p, C.s, C.a, C.dt]);
+
+    b = statsHtml + `
+      <div class="g2">
+        ${pan("My Tickets Preview", previewTable, "nav('mine')", "All")}
+        <div style="display:grid;gap:12px;align-content:start">
+          ${pan("Action Required", renderActionRequired(m))}
+          ${pan("My Ticket Status", donutChart(Object.keys(SC).map(k => [k, cnt(m, k), SC[k]]).filter(x => x[1]), "My Tickets", "my_dash"))}
+        </div>
+      </div>
+      <div class="g2">
+        ${pan("Quick Tips for Submitting Tickets", `
+          <div class="pb" style="font-size:12.5px;color:var(--mu);line-height:1.5">
+            <p style="margin:0 0 6px"><b>Need expedited resolution?</b></p>
+            <ul style="margin:0;padding-left:18px">
+              <li>Choose the exact item category from the cascading selector.</li>
+              <li>Attach system error screenshots using the attachment selector.</li>
+              <li>Employee tickets route to manager approval before reaching Support.</li>
+              <li>Check the Action Required box above whenever clarification is requested.</li>
+            </ul>
+          </div>
+        `)}
+        ${pan("Recent Department Activity", `
+          <div class="pb">
+            ${group(T.slice(0, 8), x => x.dp).map(x => `
+              <div class="row">
+                <b>${x[0]} Department</b>
+                <small>${x[1]} recent submissions</small>
+              </div>
+            `).join("")}
+          </div>
+        `)}
+      </div>
+    `;
+  }
+
+  /* ----------------------------------------------------
+     3. FILTERED LIST VIEW (From summary card clicks)
+     ---------------------------------------------------- */
+  else if (page === "filtered_list") {
+    t = customFilterTitle || "Filtered Tickets";
+    s = "Displaying matching records from interactive summary card.";
+    a = `<button class="btn s" onclick="nav('${customFilterReturnPage || 'all_dash'}')">← Back to Dashboard</button>`;
+    b = fullTable(customFilteredTickets || [], [C.id, C.d, C.by, C.dp, C.p, C.s, C.a, C.dt, C.go], customFilterTitle || "Matching Records");
+  }
+
+  /* ----------------------------------------------------
+     4. FULL TICKET TABLES (With 10-per-page Pagination)
+     ---------------------------------------------------- */
+  else if (["all", "mine", "appr", "pool", "asg"].includes(page)) {
+    const tableConfigs = {
+      all: { dataset: T, title: "All Tickets", sub: "Complete organization ticket repository with multi-attribute filtering." },
+      mine: { dataset: m, title: "My Tickets", sub: "Complete history of tickets created by you." },
+      appr: { dataset: T.filter(x => x.s === "Pending Approval"), title: "Pending Approvals", sub: "Employee tickets awaiting management review." },
+      pool: { dataset: T.filter(x => x.a === "Unassigned" && x.s !== "Resolved"), title: "Support Ticket Pool", sub: "Approved and direct tickets open to all engineers." },
+      asg: { dataset: T.filter(x => x.a === P[role][0]), title: "My Assigned Work", sub: "Tickets currently assigned to you for resolution." }
+    };
+
+    const cfg = tableConfigs[page];
+    t = cfg.title;
+    s = cfg.sub;
+    a = newBtn;
+
+    // Show table without action buttons inside rows (clicking row opens details)
+    const cols = page === "appr"
+      ? [C.id, C.d, C.by, C.dp, C.p, C.dt, C.go]
+      : [C.id, C.d, C.by, C.dp, C.p, C.s, C.a, C.dt, C.go];
+
+    b = fullTable(cfg.dataset, cols, cfg.title, page !== "appr");
+  }
+
+  /* ----------------------------------------------------
+     5. EMPLOYEES DIRECTORY (Admin)
+     ---------------------------------------------------- */
+  else if (page === "emps") {
+    t = "Employee Directory";
+    s = "Manage staff accounts, department assignments, and access roles.";
+    a = `<button class="btn p" onclick="toast('Add Employee modal (preview)')">＋ Add Employee</button>`;
+
+    b = `
+      <div class="tool">
+        <input class="f s" placeholder="Search by name, email, or employee ID...">
+        <select class="f">
+          <option>All Departments</option>
+          <option>Engineering</option>
+          <option>Finance</option>
+          <option>HR</option>
+          <option>IT Operations</option>
+          <option>IT Infrastructure</option>
+        </select>
+        <select class="f">
+          <option>All Roles</option>
+          <option>Employee</option>
+          <option>Approver</option>
+          <option>Support Team</option>
+          <option>Admin</option>
+        </select>
+      </div>
+      <div class="panel">
+        <div class="ph">
+          <h2>Active Directory Users (${E.length})</h2>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Employee Name</th>
+              <th>Employee ID</th>
+              <th>Department</th>
+              <th>Role</th>
+              <th>Total Tickets</th>
+              <th>Account Status</th>
+              <th>Management Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${E.map(u => `
+              <tr style="cursor:default">
+                <td>
+                  <div style="display:flex;gap:10px;align-items:center">
+                    <div class="av" style="width:28px;height:28px;font-size:11px">${ini(u[0])}</div>
+                    <div>
+                      <b>${u[0]}</b>
+                      <small style="color:var(--mu);display:block">${u[0].toLowerCase().replace(" ", ".")}@ladera.com</small>
+                    </div>
+                  </div>
+                </td>
+                <td class="id">${u[1]}</td>
+                <td>${u[2]}</td>
+                <td><b>${u[3]}</b></td>
+                <td>${u[4]}</td>
+                <td>
+                  ${u[5] === 0 ? `<span class="sb" style="background:#eee;color:#777">Inactive</span>` : `<span class="sb" style="background:var(--grb);color:var(--gr)">Active</span>`}
+                </td>
+                <td>
+                  <span style="display:flex;gap:6px">
+                    <button class="btn s" onclick="resetPwd('${u[0]}')">Reset Password</button>
+                    <button class="btn s ${u[5] === 0 ? 'g' : 'd'}" onclick="toast('Employee status toggled (preview)')">
+                      ${u[5] === 0 ? 'Activate' : 'Deactivate'}
+                    </button>
+                  </span>
+                </td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  /* ----------------------------------------------------
+     6. NEW / EDIT TICKET
+     ---------------------------------------------------- */
+  else if (page === "new") {
+    t = edt ? `Edit Ticket · ${edt.id}` : "Create New Ticket";
+    s = edt
+      ? "Update details or attachments while the ticket is pending approval."
+      : (role === "employee" ? "Submissions route to an Approver first, then to the Support Team pool." : "Submissions route directly to the Support Team pool.");
+
+    if (!edt) f = { c: "", s: "", i: "" };
+
+    b = `
+      <div class="panel">
+        <form class="pb fg" onsubmit="event.preventDefault();saveTk()">
+          <div class="ff">
+            <label>Raised By</label>
+            <input value="${edt ? edt.by : P[role][0]}" readonly style="background:#f7f6fb;color:#666">
+          </div>
+          <div class="ff">
+            <label>Department</label>
+            <input value="${E.find(e => e[0] === (edt ? edt.by : P[role][0]))?.[2] || 'Operations'}" readonly style="background:#f7f6fb;color:#666">
+          </div>
+          <div class="ff">
+            <label><span class="req">*</span>Priority</label>
+            <select id="pr1">
+              ${["Medium", "High", "Low"].map(o => `<option ${edt && edt.p == o ? "selected" : ""}>${o}</option>`).join("")}
+            </select>
+          </div>
+
+          <div class="fg w" id="casc" style="grid-column:1/-1;padding:0">
+            ${casc()}
+          </div>
+
+          <div class="ff w">
+            <label><span class="req">*</span>Short Description (One-line Summary)</label>
+            <input id="sd1" required placeholder="e.g., Cannot connect to VPN server over AnyConnect client" value="${edt ? edt.d : ""}">
+          </div>
+
+          <div class="ff w">
+            <label><span class="req">*</span>Detailed Description & Business Impact</label>
+            <textarea id="ds1" required placeholder="Describe the problem, exact error codes, frequency, and business impact...">${edt ? edt.desc : ""}</textarea>
+          </div>
+
+          <div class="ff w">
+            <label>Attachments (Logs, Error Screenshots, Invoices)</label>
+            <div id="atl" style="display:grid;gap:6px;margin-bottom:8px">${atl()}</div>
+            <input type="file" multiple onchange="addF(this)">
+          </div>
+
+          <div style="grid-column:1/-1;display:flex;justify-content:flex-end;gap:8px;padding-top:12px;border-top:1px solid var(--ln)">
+            <button type="button" class="btn s" onclick="edt ? detail(edt.id) : nav('all_dash')">Cancel</button>
+            <button class="btn p s">${edt ? "Save Changes" : "Submit Ticket"}</button>
+          </div>
+        </form>
+      </div>
+    `;
+  }
+
+  /* ----------------------------------------------------
+     7. NOTIFICATIONS
+     ---------------------------------------------------- */
+  else if (page === "notif") {
+    t = "Notifications History";
+    s = "In-app and email alert history for workflow events.";
+
+    const notifItems = [
+      ["Clarification requested · TKT-1001", "Support requested Cisco AnyConnect diagnostic logs.", "10 min ago"],
+      ["Ticket assigned to engineer · TKT-1002", "David Kim claimed AWS database latency ticket.", "2 hours ago"],
+      ["Approval pending · TKT-1003", "Developer laptop request submitted by James Wilson.", "Yesterday"],
+      ["Ticket resolved · TKT-1004", "Annual Figma enterprise license renewal completed.", "Yesterday"],
+      ["Ticket approved · TKT-1006", "Scan-to-email request approved and sent to Support.", "2 days ago"],
+      ["Ticket rejected · TKT-0998", "Reason: Duplicate request already handled in TKT-0995.", "3 days ago"]
+    ];
+
+    b = `
+      <div class="g2s">
+        ${pan("Recent System Notifications", `
+          <div class="pb">
+            ${notifItems.map(x => `
+              <div class="row">
+                <div>
+                  <b>${x[0]}</b>
+                  <small>${x[1]}</small>
+                </div>
+                <small>${x[2]}</small>
+              </div>
+            `).join("")}
+          </div>
+        `)}
+        ${pan("Notification Preferences", `
+          <div class="pb">
+            <div class="row">
+              <div>
+                <b>Email Alerts</b>
+                <small>Outlook notifications on approval & clarification</small>
+              </div>
+              <span class="sb" style="background:var(--grb);color:var(--gr)">Enabled</span>
+            </div>
+            <div class="row">
+              <div>
+                <b>In-App Badges</b>
+                <small>Sidebar unread counter updates in real time</small>
+              </div>
+              <span class="sb" style="background:var(--grb);color:var(--gr)">Enabled</span>
+            </div>
+          </div>
+        `)}
+      </div>
+    `;
+  }
+
+  /* ----------------------------------------------------
+     8. TICKET DETAILS PAGE (With Role-Specific Actions)
+     ---------------------------------------------------- */
+  else if (page === "det") {
+    const x = cur;
+    const isOwner = x.by === P[role][0];
+    const isPending = x.s === "Pending Approval";
+    const isApprover = role === "approver";
+    const isSupport = role === "support";
+    const isClarificationNeeded = x.s === "Clarification Needed";
+
+    t = `${x.id} · Ticket Details`;
+    s = x.d;
+
+    // Header Back Action
+    a = `<button class="btn s" onclick="nav('${isApprover ? 'appr' : (role === 'employee' ? 'my_dash' : 'all_dash')}')">Back</button>`;
+
+    // Action Panel contents based on role & stage
+    let actionBoxHtml = "";
+
+    // Approver actions for pending tickets
+    if (isApprover && isPending) {
+      actionBoxHtml = `
+        <div class="panel" style="border:1.5px solid var(--pu)">
+          <div class="ph" style="background:var(--pu2)">
+            <h2 style="color:var(--pu)">Approver Decision</h2>
+          </div>
+          <div class="pb" style="display:flex;flex-direction:column;gap:10px">
+            <p style="margin:0;font-size:12px;color:var(--mu)">This ticket requires your approval before proceeding to the Support Team pool.</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn g s" onclick="approverApprove('${x.id}')">✓ Approve Ticket</button>
+              <button class="btn d s" onclick="approverReject('${x.id}')">✕ Reject Ticket</button>
+              <button class="btn s" onclick="requestClarification('${x.id}')">💬 Request Clarification</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Support Team actions
+    else if (isSupport) {
+      if (x.a === "Unassigned" && x.s !== "Resolved") {
+        actionBoxHtml = `
+          <div class="panel">
+            <div class="ph"><h2>Support Team Actions</h2></div>
+            <div class="pb">
+              <p style="margin:0 0 10px;font-size:12px;color:var(--mu)">This ticket is open in the support pool.</p>
+              <button class="btn p s" onclick="takeTicket('${x.id}')">👤 Assign to Me / Take Ticket</button>
+            </div>
+          </div>
+        `;
+      } else if (x.a === P[role][0] && x.s !== "Resolved") {
+        actionBoxHtml = `
+          <div class="panel">
+            <div class="ph"><h2>Resolution Actions</h2></div>
+            <div class="pb" style="display:flex;gap:8px">
+              <button class="btn g s" onclick="resolveTicket('${x.id}')">✓ Mark as Resolved</button>
+              <button class="btn s" onclick="requestClarification('${x.id}')">💬 Request Clarification</button>
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    // Employee response box if clarification requested
+    else if (isOwner && isClarificationNeeded) {
+      actionBoxHtml = `
+        <div class="panel" style="border:1.5px solid var(--am)">
+          <div class="ph" style="background:var(--amb)">
+            <h2 style="color:var(--am)">Respond to Clarification Request</h2>
+          </div>
+          <div class="pb">
+            <p style="margin:0 0 8px;font-size:12px;color:var(--mu)">Please provide the requested details so the team can proceed with your ticket.</p>
+            <textarea class="f" id="clarResponseInput" style="width:100%;min-height:75px;resize:vertical" placeholder="Enter your response and details here..."></textarea>
+            <div style="text-align:right;margin-top:8px">
+              <button class="btn p s" onclick="submitClarificationResponse('${x.id}')">Submit Response</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Owner edit/delete if still pending approval
+    else if (isOwner && isPending) {
+      actionBoxHtml = `
+        <div class="panel">
+          <div class="ph"><h2>Submitter Controls</h2></div>
+          <div class="pb" style="display:flex;gap:8px">
+            <button class="btn s" onclick="editTk()">✎ Edit Details</button>
+            <button class="btn d s" onclick="if(confirm('Are you sure you want to delete this ticket?')) delTk()">🗑 Cancel & Delete</button>
+          </div>
+        </div>
+      `;
+    }
+
+    // Clarification Q&A thread component
+    let clarificationThread = "";
+    if (x.clarifications && x.clarifications.length) {
+      clarificationThread = `
+        <div class="panel">
+          <div class="ph"><h2>Clarification History (${x.clarifications.length})</h2></div>
+          <div class="pb">
+            ${x.clarifications.map(c => `
+              <div class="clar-box q">
+                <div class="clar-meta">
+                  <b>Question from ${c.by}</b>
+                  <span>${c.dt}</span>
+                </div>
+                <div class="clar-text">${c.q}</div>
+              </div>
+              ${c.ans ? `
+                <div class="clar-box a">
+                  <div class="clar-meta">
+                    <b>Response from Submitter</b>
+                    <span>${c.ansDt || 'Recorded'}</span>
+                  </div>
+                  <div class="clar-text">${c.ans}</div>
+                </div>
+              ` : `
+                <div style="font-size:11.5px;color:var(--am);margin:4px 0 10px 14px">
+                  ⏳ Awaiting response from submitter.
+                </div>
+              `}
+            `).join("")}
+          </div>
+        </div>
+      `;
+    }
+
+    b = `
+      <div class="g2s">
+        <!-- Left: Ticket Metadata & Description & Attachments -->
+        <div style="display:grid;gap:12px;align-content:start">
+          <div class="panel">
+            <div class="ph">
+              <h2>Ticket Overview</h2>
+              <span>${sb(x.s)}</span>
+            </div>
+            <div class="pb fg">
+              <div>
+                <div class="k">Ticket ID</div>
+                <div class="v id">${x.id}</div>
+              </div>
+              <div>
+                <div class="k">Priority</div>
+                <div class="v">${pr(x.p)}</div>
+              </div>
+              <div>
+                <div class="k">Created Date</div>
+                <div class="v">${x.dt}</div>
+              </div>
+              <div>
+                <div class="k">Raised By</div>
+                <div class="v">${x.by}</div>
+              </div>
+              <div>
+                <div class="k">Department</div>
+                <div class="v">${x.dp}</div>
+              </div>
+              <div>
+                <div class="k">Assigned Engineer</div>
+                <div class="v">${x.a}</div>
+              </div>
+              <div style="grid-column:1/-1">
+                <div class="k">Category › Sub Category › Item</div>
+                <div class="v">${x.cat}</div>
+              </div>
+              <div style="grid-column:1/-1">
+                <div class="k">Short Description</div>
+                <div class="v" style="font-size:14px;color:var(--tx)">${x.d}</div>
+              </div>
+              <div style="grid-column:1/-1">
+                <div class="k">Detailed Explanation</div>
+                <div class="v" style="font-weight:400;white-space:pre-wrap;background:#fbfafc;padding:10px 12px;border-radius:7px;border:1px solid #f0ecf6">${x.desc}</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Attachments with separate View and Download icons -->
+          <div class="panel">
+            <div class="ph">
+              <h2>Attachments (${x.f.length})</h2>
+            </div>
+            <div class="pb">
+              ${x.f.length ? `
+                <div style="display:grid;gap:8px">
+                  ${x.f.map(z => {
+                    const isImg = z[2] === "image" || /\.(png|jpe?g|gif|svg|webp)$/i.test(z[0]);
+                    return `
+                      <div class="att">
+                        <span style="font-size:16px">${isImg ? '🖼️' : '📄'}</span>
+                        <span>${z[0]}</span>
+                        <small>${z[1]}</small>
+                        ${isImg ? `
+                          <button class="ib" title="View image popup" onclick="openImageModal('${z[0]}','${z[1]}')">👁</button>
+                        ` : ""}
+                        <button class="ib" title="Download file" onclick="toast('Downloading ${z[0]}...')">⬇</button>
+                      </div>
+                    `;
+                  }).join("")}
+                </div>
+              ` : `
+                <small style="color:var(--mu)">No files attached to this ticket.</small>
+              `}
+            </div>
+          </div>
+
+          ${clarificationThread}
+        </div>
+
+        <!-- Right: Action Panel & Workflow History -->
+        <div style="display:grid;gap:12px;align-content:start">
+          ${actionBoxHtml}
+
+          <div class="panel">
+            <div class="ph">
+              <h2>Workflow History & Audit Trail</h2>
+            </div>
+            <div class="pb">
+              ${(x.history || []).map(h => `
+                <div class="tl">
+                  <b>${h.t}</b>
+                  <p>${h.by} · ${h.dt}</p>
+                  ${h.note ? `<div class="tl-note">${h.note}</div>` : ""}
+                </div>
+              `).join("")}
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  $("pt").textContent = t;
+  $("ps").textContent = s;
+  $("pa").innerHTML = a;
+  $("v").innerHTML = b;
+}
+
+/* Event listeners for top role-preview bar */
+document.querySelectorAll("[data-r]").forEach(b => {
+  b.onclick = () => {
+    role = b.dataset.r;
+    // Default landing page for Admin, Approver, Support is All Tickets Dashboard; Employee gets Dashboard
+    page = role === "employee" ? "my_dash" : "all_dash";
+    $("em").value = P[role][2];
+    customFilteredTickets = null;
+    curPage = 1;
+    render();
+  };
+});
+
+/* Initialize */
+$("em").value = P.admin[2];
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,275 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #f6f4fc;
+  --sf: #ffffff;
+  --tx: #28213f;
+  --mu: #77718e;
+  --bd: #e6e1f1;
+  --ln: #e6e1f1;
+  --ac: #6d5bb8;
+  --pu: #6d5bb8;
+  --ac2: #eeeafb;
+  --pu2: #eeeafb;
+  --nav: #2b2447;
+  --nm: #d8d2ec;
+  --gr: #237a4a;
+  --grb: #e8f6ed;
+  --am: #95630b;
+  --amb: #fff5d9;
+  --bl: #25638b;
+  --blb: #eaf4fb;
+  --rd: #a33c32;
+  --rdb: #fff0ed;
+  --wr: #b4441f;
+  --ok: #237a3b;
+  --sh: #2b2447;
+  --shx: #d4cdf0;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #15121f;
+    --sf: #1e1a2e;
+    --tx: #e9e5f8;
+    --mu: #9d97b8;
+    --bd: #302a48;
+    --ac: #b8a9f0;
+    --ac2: #2d2750;
+    --wr: #f08a62;
+    --ok: #6fd08a;
+    --sh: #0f0c18;
+    --shx: #d4cdf0;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #15121f;
+  --sf: #1e1a2e;
+  --tx: #e9e5f8;
+  --mu: #9d97b8;
+  --bd: #302a48;
+  --ln: #302a48;
+  --ac: #b8a9f0;
+  --pu: #b8a9f0;
+  --ac2: #2d2750;
+  --pu2: #2d2750;
+  --nav: #120e20;
+  --nm: #d8d2ec;
+  --gr: #6fd08a;
+  --am: #fbbf24;
+  --bl: #60a5fa;
+  --rd: #f87171;
+  --wr: #f08a62;
+  --ok: #6fd08a;
+  --sh: #0f0c18;
+  --shx: #d4cdf0;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f6f4fc;
+  --sf: #ffffff;
+  --tx: #28213f;
+  --mu: #77718e;
+  --bd: #e6e1f1;
+  --ln: #e6e1f1;
+  --ac: #6d5bb8;
+  --pu: #6d5bb8;
+  --ac2: #eeeafb;
+  --pu2: #eeeafb;
+  --nav: #2b2447;
+  --nm: #d8d2ec;
+  --gr: #237a4a;
+  --grb: #e8f6ed;
+  --am: #95630b;
+  --amb: #fff5d9;
+  --bl: #25638b;
+  --blb: #eaf4fb;
+  --rd: #a33c32;
+  --rdb: #fff0ed;
+  --wr: #b4441f;
+  --ok: #237a3b;
+  --sh: #2b2447;
+  --shx: #d4cdf0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16.75px;
+  line-height: 1.5;
+}
+
+@media (min-width: 640px) {
+  html {
+    font-size: 17px;
+  }
+}
+
+@media (min-width: 1024px) {
+  html {
+    font-size: 17.25px;
+  }
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--tx);
+  font-family: var(--font-public-sans), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Status Badge Styles */
+.st {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 99px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: var(--ac2);
+  color: var(--ac);
+  white-space: nowrap;
+}
+
+.st.Rejected {
+  background: #f8e0d8;
+  color: #a33a16;
+}
+
+.st.Resolved {
+  background: #dff3e4;
+  color: #1f6d34;
+}
+
+.st.Pending {
+  background: #fbefcf;
+  color: #8a6209;
+}
+
+.st.Open {
+  background: #e0ecfb;
+  color: #1d4f8f;
+}
+
+/* Interactive Table Rows */
+tr.k {
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+tr.k:hover td {
+  background: var(--ac2);
+}
+
+/* History Border */
+.hist {
+  border-left: 2px solid var(--bd);
+}
+
+/* Smooth Focus */
+input:focus, select:focus, textarea:focus, button:focus-visible {
+  outline: 2px solid var(--ac);
+  outline-offset: 1px;
+}
+
+/* Hidden Scrollbar Container */
+.hidden-scroll {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.hidden-scroll::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+  width: 0;
+  height: 0;
+}
+
+/* ============ Workflow History Timeline ============ */
+:root {
+  --tl-dot: 10px;
+  --tl-line: 2px;
+  --tl-gutter: 22px;
+  --tl-dot-color: #4c1d95;               /* dark violet bullet */
+  --tl-ring: rgba(76, 29, 149, 0.18);    /* soft halo */
+  --tl-ring-strong: rgba(76, 29, 149, 0.30);
+  --tl-line-color: #cfc4ec;
+}
+
+/* Dark mode: system preference (unless the user forced light) */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --tl-dot-color: #a78bfa;
+    --tl-ring: rgba(167, 139, 250, 0.22);
+    --tl-ring-strong: rgba(167, 139, 250, 0.38);
+    --tl-line-color: #3d3560;
+  }
+}
+
+/* Dark mode: manual toggle */
+:root[data-theme="dark"] {
+  --tl-dot-color: #a78bfa;
+  --tl-ring: rgba(167, 139, 250, 0.22);
+  --tl-ring-strong: rgba(167, 139, 250, 0.38);
+  --tl-line-color: #3d3560;
+}
+
+/* .history-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+} */
+
+.history-item {
+  position: relative;
+  padding: 0 0 18px var(--tl-gutter);
+}
+
+.history-item:last-child {
+  padding-bottom: 0;
+}
+
+/* Straight line: dot center -> next dot center (hidden behind dots) */
+.history-item:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: calc(var(--tl-dot) / 2 - var(--tl-line) / 2);
+  top: calc(4px + var(--tl-dot) / 2);
+  bottom: calc(-4px - var(--tl-dot) / 2);
+  width: var(--tl-line);
+  border-radius: 999px;
+  background: var(--tl-line-color);
+}
+
+/* Dark violet bullet with halo */
+.history-dot {
+  position: absolute;
+  left: 0;
+  top: 4px;
+  width: var(--tl-dot);
+  height: var(--tl-dot);
+  border-radius: 50%;
+  background: var(--tl-dot-color);
+  box-shadow: 0 0 0 3px var(--tl-ring);
+  z-index: 1;
+}
+
+/* Newest entry (first item) stands out slightly */
+.history-item:first-child .history-dot {
+  box-shadow: 0 0 0 4px var(--tl-ring-strong);
+}
+
+.history-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 6px 0 6px 6px;   /* room for the halo on top, bottom and left */
+}
