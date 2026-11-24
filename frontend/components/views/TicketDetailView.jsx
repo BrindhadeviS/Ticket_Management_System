@@ -136,13 +136,17 @@ export default function TicketDetailView() {
     }
   };
 
+  const [fullTicket, setFullTicket] = useState(null);
+
   useEffect(() => {
-    const fetchAttachment = async () => {
+    const fetchTicketDetails = async () => {
       try {
         const ticketData = await fetchTicketById(sel);
+        setFullTicket(ticketData);
         setAttachment(ticketData?.attachment_id ? ticketData : null);
       } catch (error) {
-        console.warn("Error fetching attachment:", error);
+        console.warn("Error fetching ticket details:", error);
+        setFullTicket(null);
         setAttachment(null);
       }
     };
@@ -151,48 +155,14 @@ export default function TicketDetailView() {
       setDecisionError("");
       setPoolError("");
       setWorkError("");
-      fetchAttachment();
+      fetchTicketDetails();
     }
-  }, [sel]);
-
-  if (!ticket) {
-    return (
-      <div className="p-8 max-w-xl mx-auto">
-        <EmptyState
-          icon={FileText}
-          title="Ticket not found"
-          message="The requested ticket could not be found or may have been deleted."
-          action={
-            <button
-              onClick={() => setSel(null)}
-              className="px-4 py-2 rounded-lg font-bold text-white text-sm"
-              style={{ backgroundColor: "var(--pu)" }}
-            >
-              Back to list
-            </button>
-          }
-        />
-      </div>
-    );
-  }
-
-  const isOwner = Number(ticket.by) === Number(me?.employee_id || me?.id);
-  const isPending = ticket.status === "Pending Approval";
-  const isAdmin = me?.role === "Admin";
-  const isApprover = me?.role === "Approver" || me?.role === "Admin";
-  const isSupport = me?.role === "Support Team";
-  const isEmployee = me?.role === "Employee";
-
-  const canEditOrDelete =
-    isOwner &&
-    !editing &&
-    (
-      ticket.status === "Pending Approval" ||
-      (["Admin", "Approver", "Support Team"].includes(me?.role) && ticket.status === "Open")
-    );
+  }, [sel, ticket]);
 
   // Related tickets in the same category / subcategory or by same creator
   const relatedTickets = React.useMemo(() => {
+    if (!ticket) return [];
+
     const allPool = [...tickets, ...poolTickets, ...assignedTickets];
     const seen = new Set();
     const unique = [];
@@ -211,6 +181,42 @@ export default function TicketDetailView() {
     const results = matches.length > 0 ? matches : unique;
     return results.slice(0, 5);
   }, [ticket, tickets, poolTickets, assignedTickets]);
+
+  if (!ticket) {
+    return (
+      <div className="p-8 max-w-xl mx-auto">
+        <EmptyState
+          icon={FileText}
+          title="Ticket not found"
+          message="The requested ticket could not be found or may have been deleted."
+          action={
+            <button
+              onClick={() => setSel(null)}
+              className="cursor-pointer px-4 py-2 rounded-lg font-bold text-white text-sm"
+              style={{ backgroundColor: "var(--pu)" }}
+            >
+              Back to list
+            </button>
+          }
+        />
+      </div>
+    );
+  }
+
+  const isOwner = Number(ticket.by || ticket.created_by) === Number(me?.employee_id || me?.id);
+  const isPending = ticket.status === "Pending Approval";
+  const isAdmin = me?.role === "Admin";
+  const isApprover = me?.role === "Approver" || me?.role === "Admin";
+  const isSupport = me?.role === "Support Team";
+  const isEmployee = me?.role === "Employee";
+
+  // Support Team, Admin, Approver created tickets: until the status is Open allow edit/delete by owner
+  // Employee created tickets: allow edit/delete while status is Pending Approval
+  const isDirectRole = ["Admin", "Approver", "Support Team"].includes(me?.role);
+  const canEditOrDelete =
+    isOwner &&
+    !editing &&
+    (ticket.status === "Pending Approval" || (isDirectRole && ticket.status === "Open"));
 
   // Mockup SB status badge styles
   const SB = {
@@ -427,7 +433,7 @@ export default function TicketDetailView() {
                   setActionLoading("");
                 }
               }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border font-semibold text-xs transition-colors cursor-pointer hover:bg-red-500/10 disabled:opacity-50"
+              className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded-lg border font-semibold text-xs transition-colors cursor-pointer hover:bg-red-500/10 disabled:opacity-50"
               style={{
                 borderColor: "#f0c9c2",
                 color: "var(--rd)",
@@ -704,11 +710,11 @@ export default function TicketDetailView() {
               </form>
             ) : (
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider mb-2 text-black dark:text-white">
+                <label className="block text-xs font-bold uppercase tracking-wider mb-1.5 text-black dark:text-white">
                   Description
                 </label>
                 <div
-                  className="rounded-xl border p-4 sm:p-5 text-sm font-normal text-black dark:text-gray-100 whitespace-pre-wrap leading-relaxed min-h-[50px]"
+                  className="rounded-xl border px-3.5 py-2.5 text-sm font-normal text-black dark:text-gray-100 whitespace-pre-wrap leading-relaxed min-h-[44px]"
                   style={{
                     backgroundColor: "#faf9fe",
                     borderColor: "var(--ln)",
@@ -722,18 +728,18 @@ export default function TicketDetailView() {
 
             {/* Attachments Section (Directly beneath Description with tight, clean spacing) */}
             {!editing && (
-              <div className="pt-2">
-                <label className="block text-xs font-bold uppercase tracking-wider mb-2 text-black dark:text-white">
+              <div className="pt-1">
+                <label className="block text-xs font-bold uppercase tracking-wider mb-1.5 text-black dark:text-white">
                   Attachments
                 </label>
 
                 {attachment ? (
                   <div
-                    className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-xl border"
+                    className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 rounded-xl border"
                     style={{ backgroundColor: "#faf9fe", borderColor: "var(--ln)" }}
                   >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <Paperclip size={18} style={{ color: "var(--pu)" }} />
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Paperclip size={16} style={{ color: "var(--pu)" }} />
                       <span className="text-sm font-bold text-black dark:text-white truncate">
                         {attachment.attachment_name}
                       </span>
@@ -742,11 +748,11 @@ export default function TicketDetailView() {
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-2 text-xs font-bold">
+                    <div className="flex items-center gap-1.5 text-xs font-bold">
                       <button
                         type="button"
                         onClick={() => setIsPreviewOpen(true)}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border hover:bg-black/5 cursor-pointer"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border hover:bg-black/5 cursor-pointer"
                         style={{ borderColor: "var(--ln)", color: "var(--pu)" }}
                       >
                         <ExternalLink size={13} />
@@ -756,7 +762,7 @@ export default function TicketDetailView() {
                         type="button"
                         onClick={handleDownloadAttachment}
                         disabled={isDownloading}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border hover:bg-black/5 disabled:opacity-60 cursor-pointer"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border hover:bg-black/5 disabled:opacity-60 cursor-pointer"
                         style={{ borderColor: "var(--ln)", color: "var(--pu)" }}
                       >
                         <Download size={13} className={isDownloading ? "animate-pulse" : ""} />
@@ -766,7 +772,7 @@ export default function TicketDetailView() {
                   </div>
                 ) : (
                   <div
-                    className="p-3 rounded-lg border text-xs"
+                    className="px-3 py-2 rounded-lg border text-xs"
                     style={{ backgroundColor: "#faf9fe", borderColor: "var(--ln)", color: "var(--mu)" }}
                   >
                     No attachment uploaded for this ticket.
@@ -775,37 +781,243 @@ export default function TicketDetailView() {
               </div>
             )}
 
-            {/* Clarification Reviewer Note (shown if clarification was requested) */}
-            {ticket.clarification && (
-              <div
-                className="p-4 sm:p-5 rounded-xl border space-y-2 mt-4"
-                style={{ backgroundColor: "#faf9fe", borderColor: "#e1ccee" }}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <MessageSquare size={16} style={{ color: "#7b3996" }} />
-                    <h3 className="text-sm font-bold text-black dark:text-white">
-                      Clarification
-                    </h3>
+            {/* Approver & Support Team Decision Notes (Clean, simple under Attachments without confusing colored badges) */}
+            {(() => {
+              // Priority 1: Check fullTicket (fresh from backend getTicketById) or ticket
+              const currentTicket = fullTicket || ticket;
+
+              // Inspect workflow history to accurately identify notes and actors
+              const historyList = Array.isArray(currentTicket.history)
+                ? currentTicket.history
+                : typeof currentTicket.history === "string"
+                ? JSON.parse(currentTicket.history || "[]")
+                : [];
+
+              // Check for approval entry and note
+              const approveEntry = [...historyList].reverse().find((h) => {
+                const note = String(h?.note || "");
+                return note.toLowerCase().startsWith("approved by") || h?.to === "Open";
+              });
+
+              let approverApprovedNote =
+                currentTicket.approver_reason ||
+                currentTicket.reason ||
+                ticket.approver_reason ||
+                ticket.reason ||
+                "";
+
+              if (!approverApprovedNote && approveEntry) {
+                const colonIdx = approveEntry.note?.indexOf(":");
+                if (colonIdx !== -1 && colonIdx !== undefined) {
+                  approverApprovedNote = approveEntry.note.slice(colonIdx + 1).trim();
+                } else if (approveEntry.note && !approveEntry.note.toLowerCase().includes("sent directly")) {
+                  approverApprovedNote = approveEntry.note;
+                }
+              }
+
+              // Check for rejection entry
+              const lastRejectEntry = [...historyList].reverse().find((h) => {
+                const note = String(h?.note || "").toLowerCase();
+                return h?.to === "Rejected" || note.startsWith("rejected by");
+              });
+
+              let rejectNote =
+                currentTicket.resolution ||
+                currentTicket.approver_reason ||
+                currentTicket.reason ||
+                ticket.resolution ||
+                ticket.approver_reason ||
+                ticket.reason ||
+                "";
+
+              if (!rejectNote && lastRejectEntry) {
+                const colonIdx = lastRejectEntry.note?.indexOf(":");
+                if (colonIdx !== -1 && colonIdx !== undefined) {
+                  rejectNote = lastRejectEntry.note.slice(colonIdx + 1).trim();
+                } else if (lastRejectEntry.note) {
+                  rejectNote = lastRejectEntry.note;
+                }
+              }
+
+              // Identify whether rejection was done by Support Team or Approver
+              const rejectNoteLower = String(lastRejectEntry?.note || "").toLowerCase();
+              const isRejectedBySupport =
+                currentTicket.status === "Rejected" &&
+                (Boolean(currentTicket.resolution) ||
+                  rejectNoteLower.includes("support team") ||
+                  rejectNoteLower.includes("(support)") ||
+                  (currentTicket.assignee && !rejectNoteLower.includes("approver")));
+
+              if (currentTicket.status === "Rejected") {
+                if (isRejectedBySupport) {
+                  return (
+                    <div
+                      className="p-3.5 rounded-xl border text-sm mt-3"
+                      style={{ backgroundColor: "#faf9fe", borderColor: "var(--ln)" }}
+                    >
+                      <div className="text-xs font-bold uppercase tracking-wider mb-1" style={{ color: "var(--mu)" }}>
+                        Support Team Rejection Note:
+                      </div>
+                      <div className="text-sm font-normal text-black dark:text-gray-100 whitespace-pre-wrap leading-relaxed">
+                        {rejectNote || "No rejection reason provided."}
+                      </div>
+                    </div>
+                  );
+                } else {
+                  return (
+                    <div
+                      className="p-3.5 rounded-xl border text-sm mt-3"
+                      style={{ backgroundColor: "#faf9fe", borderColor: "var(--ln)" }}
+                    >
+                      <div className="text-xs font-bold uppercase tracking-wider mb-1" style={{ color: "var(--mu)" }}>
+                        Approver Rejection Note:
+                      </div>
+                      <div className="text-sm font-normal text-black dark:text-gray-100 whitespace-pre-wrap leading-relaxed">
+                        {rejectNote || "No rejection reason provided."}
+                      </div>
+                    </div>
+                  );
+                }
+              }
+
+              return (
+                <>
+                  {approverApprovedNote && (
+                    <div
+                      className="p-3.5 rounded-xl border text-sm mt-3"
+                      style={{ backgroundColor: "#faf9fe", borderColor: "var(--ln)" }}
+                    >
+                      <div className="text-xs font-bold uppercase tracking-wider mb-1" style={{ color: "var(--mu)" }}>
+                        Approver Note:
+                      </div>
+                      <div className="text-sm font-normal text-black dark:text-gray-100 whitespace-pre-wrap leading-relaxed">
+                        {approverApprovedNote}
+                      </div>
+                    </div>
+                  )}
+
+                  {currentTicket.resolution && (
+                    <div
+                      className="p-3.5 rounded-xl border text-sm mt-3"
+                      style={{ backgroundColor: "#faf9fe", borderColor: "var(--ln)" }}
+                    >
+                      <div className="text-xs font-bold uppercase tracking-wider mb-1" style={{ color: "var(--mu)" }}>
+                        Support Team Resolved Note:
+                      </div>
+                      <div className="text-sm font-normal text-black dark:text-gray-100 whitespace-pre-wrap leading-relaxed">
+                        {currentTicket.resolution}
+                      </div>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+
+            {/* Clarification History Section (Display past Q&A, fixed section with max height & scrollbar hidden) */}
+            {(() => {
+              const list =
+                fullTicket?.clarifications && fullTicket.clarifications.length > 0
+                  ? fullTicket.clarifications
+                  : ticket.clarification
+                  ? [
+                      {
+                        id: "legacy",
+                        question: ticket.clarification,
+                        asked_by_name: ticket.status === "Pending Approval" ? "Approver" : "Support Engineer",
+                        asked_by_role: ticket.status === "Pending Approval" ? "Approver" : "Support Team",
+                        asked_at: ticket.ticketDate || ticket.created_at,
+                        answer: ticket.status !== "Clarification Needed" ? ticket.clarification_reply || null : null,
+                        answered_by_name: isOwner ? "You" : "Owner",
+                      },
+                    ]
+                  : [];
+
+              if (list.length === 0) return null;
+
+              return (
+                <div
+                  className="p-4 rounded-xl border space-y-3 mt-3"
+                  style={{ backgroundColor: "#faf9fe", borderColor: "#e1ccee" }}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <MessageSquare size={16} style={{ color: "#7b3996" }} />
+                      <h3 className="text-sm font-bold text-black dark:text-white">
+                        Clarification
+                      </h3>
+                    </div>
+                    {ticket.status === "Clarification Needed" && (
+                      <span className="text-xs font-bold rounded-full px-2.5 py-0.5 bg-[#f4eafa] text-[#7b3996]">
+                        Clarification Requested
+                      </span>
+                    )}
                   </div>
-                  <span className="text-xs font-bold rounded-full px-2.5 py-0.5 bg-[#f4eafa] text-[#7b3996]">
-                    Clarification Requested
-                  </span>
+
+                  {/* Scrollable container showing past messages with hidden scrollbar */}
+                  <div className="max-h-[220px] overflow-y-auto no-scrollbar space-y-3 pr-0.5">
+                    {list.map((c, idx) => {
+                      const reviewerLabel = c.asked_by_role || c.asked_by_name || "Reviewer";
+                      const ownerLabel = isOwner ? "You" : "Owner";
+
+                      return (
+                        <div
+                          key={c.id || idx}
+                          className="rounded-lg p-3 bg-white/70 dark:bg-black/20 border space-y-2"
+                          style={{ borderColor: "#ece5f2" }}
+                        >
+                          <div>
+                            <div className="flex items-center justify-between gap-2 mb-1">
+                              <span className="text-xs font-bold uppercase tracking-wider text-[#7b3996]">
+                                {reviewerLabel}
+                              </span>
+                              {c.asked_at && (
+                                <span className="text-[11px]" style={{ color: "var(--mu)" }}>
+                                  {formatNormalDate(c.asked_at, true)}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-sm font-normal text-black dark:text-gray-100 whitespace-pre-wrap">
+                              {c.question}
+                            </p>
+                          </div>
+
+                          {c.answer ? (
+                            <div
+                              className="pt-2 mt-2 border-t"
+                              style={{ borderColor: "#ece5f2" }}
+                            >
+                              <div className="flex items-center justify-between gap-2 mb-1">
+                                <span className="text-xs font-bold uppercase tracking-wider text-[#237a4a]">
+                                  {ownerLabel}
+                                </span>
+                                {c.answered_at && (
+                                  <span className="text-[11px]" style={{ color: "var(--mu)" }}>
+                                    {formatNormalDate(c.answered_at, true)}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-sm font-normal text-black dark:text-gray-100 whitespace-pre-wrap">
+                                {c.answer}
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="pt-1 text-xs italic" style={{ color: "var(--mu)" }}>
+                              Awaiting response from {ownerLabel}...
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-                <div className="text-sm font-normal text-black dark:text-gray-100 whitespace-pre-wrap pt-1">
-                  <b className="block text-xs font-bold uppercase mb-1 text-black dark:text-white">
-                    Reviewer Note
-                  </b>
-                  <p>{ticket.clarification}</p>
-                </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* Action Box: Placed under Attachments */}
             {/* 1. Clarification Response (Displayed for ticket creator of any role when clarification is requested) */}
             {isOwner && ticket.status === "Clarification Needed" && (
               <div
-                className="rounded-xl border shadow-xs p-5 space-y-3 mt-4"
+                className="rounded-xl border shadow-xs p-4 sm:p-5 space-y-3 mt-3"
                 style={{ backgroundColor: "var(--sf)", borderColor: "#e1ccee" }}
               >
                 <div className="flex items-center gap-2">
@@ -815,14 +1027,14 @@ export default function TicketDetailView() {
                   </h3>
                 </div>
                 <textarea
-                  rows={3}
+                  rows={2}
                   value={clarificationText}
                   onChange={(e) => {
                     setClarificationText(e.target.value);
                     if (clarificationError) setClarificationError("");
                   }}
                   placeholder="Enter your response and details here..."
-                  className="w-full px-3.5 py-2.5 rounded-lg text-sm font-normal text-black dark:text-gray-100 border focus:outline-hidden transition-colors"
+                  className="w-full px-3.5 py-2 rounded-lg text-sm font-normal text-black dark:text-gray-100 border focus:outline-hidden transition-colors"
                   style={{
                     backgroundColor: "var(--sf)",
                     borderColor: "var(--ln)",
@@ -860,9 +1072,8 @@ export default function TicketDetailView() {
               </div>
             )}
 
-            {/* 2. Approver Decision Action Card (Approver only on tickets not owned by self) */}
-            {isApprover && !isOwner && !isAdmin &&
-              (ticket.status === "Pending Approval" || (ticket.status === "Clarification Needed" && !ticket.assignee)) && (
+            {/* 2. Approver Decision Action Card (Approver only on tickets assigned to them, only when Pending Approval) */}
+            {isApprover && !isOwner && !isAdmin && ticket.status === "Pending Approval" && (Number(ticket.approver_id || ticket.approver) === Number(me?.employee_id || me?.id)) && (
                 <div
                   className="rounded-xl border shadow-xs p-5 space-y-3 mt-4"
                   style={{ backgroundColor: "var(--sf)", borderColor: "var(--ln)" }}
@@ -993,10 +1204,10 @@ export default function TicketDetailView() {
               </div>
             )}
 
-            {/* 4. Support Team Work Action Card (In Progress / Assigned Tickets) */}
+            {/* 4. Support Team Work Action Card (In Progress / Assigned Tickets, only when not awaiting clarification) */}
             {isSupport &&
               (Number(ticket.assignee) === Number(me?.employee_id || me?.id) || !ticket.assignee) &&
-              (ticket.status === "In Progress" || ticket.status === "Pending" || (ticket.status === "Clarification Needed" && ticket.assignee)) && (
+              (ticket.status === "In Progress" || ticket.status === "Pending") && (
                 <div
                   className="rounded-xl border shadow-xs p-5 space-y-3 mt-1"
                   style={{ backgroundColor: "var(--sf)", borderColor: "var(--ln)" }}

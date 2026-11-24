@@ -13,7 +13,7 @@ const handle = (action) => async (req, res, next) => {
   }
 };
 
-export const approve = handle((req) => workflowService.approveTicket(req.params.id, req.user));
+export const approve = handle((req) => workflowService.approveTicket(req.params.id, req.user, req.body.reason || req.body.comment));
 export const reject = handle((req) => workflowService.rejectTicket(req.params.id, req.user, req.body.reason));
 export const take = handle((req) => workflowService.takeTicket(req.params.id, req.user));
 export const release = handle((req) => workflowService.releaseTicket(req.params.id, req.user));

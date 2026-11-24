@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useMemo } from "react";
 import { useApp } from "@/context/AppContext";
@@ -66,7 +66,7 @@ function CardWave({ fromColor = "#6d5bb8", toColor = "#a494e8", id = "wave-grad"
 }
 
 // Semi-circular gauge chart replacing vertical bar chart (Reference Image 2)
-function SemiCirclePriorityChart({ priorityStats, className = "" }) {
+function SemiCirclePriorityChart({ priorityStats, className = "", compact = false }) {
   const { critical, high, medium, low, total } = priorityStats;
 
   const cx = 140;
@@ -134,6 +134,110 @@ function SemiCirclePriorityChart({ priorityStats, className = "" }) {
     return { ...cat, d };
   }).filter(Boolean);
 
+  // Compact layout for Support Team: split into Left (half-circle gauge) and Right (priority boxes)
+  if (compact) {
+    return (
+      <div
+        className={`rounded-xl border shadow-xs flex flex-col justify-between p-3 sm:p-3.5 h-full ${className}`}
+        style={{ backgroundColor: "var(--sf)", borderColor: "var(--ln)" }}
+      >
+        <div
+          className="flex items-center gap-2 border-b pb-1.5 mb-1.5"
+          style={{ borderColor: "var(--ln)" }}
+        >
+          <div
+            className="flex h-4.5 w-4.5 items-center justify-center rounded-md"
+            style={{ backgroundColor: "var(--pu2)", color: "var(--pu)" }}
+          >
+            <PieIcon size={11} />
+          </div>
+          <h2 className="text-xs sm:text-sm font-bold text-black dark:text-white">
+            Tickets by Priority
+          </h2>
+        </div>
+
+        <div className="flex-1 flex items-center justify-between gap-2.5 sm:gap-3.5 px-0.5 min-h-0">
+          {/* Left: Half-Circle Gauge */}
+          <div className="flex-shrink-0 flex items-center justify-center w-[140px] sm:w-[175px]">
+            <svg
+              viewBox="0 0 280 126"
+              className="w-full max-w-[145px] sm:max-w-[500px] overflow-visible"
+            >
+              <path
+                d={`M ${cx - R} ${cy} A ${R} ${R} 0 0 1 ${cx + R} ${cy} L ${cx + r} ${cy} A ${r} ${r} 0 0 0 ${cx - r} ${cy} Z`}
+                fill="currentColor"
+                className="text-black/[0.06] dark:text-white/[0.06]"
+              />
+              {arcSegments.map((seg) => (
+                <path
+                  key={seg.id}
+                  d={seg.d}
+                  fill={seg.color}
+                  className="transition-all duration-300 hover:opacity-90"
+                />
+              ))}
+              <text
+                x={cx}
+                y={cy - 20}
+                textAnchor="middle"
+                className="text-2xl sm:text-3xl font-black fill-black dark:fill-white font-mono"
+                style={{ fontWeight: 800 }}
+              >
+                {total}
+              </text>
+              <text
+                x={cx}
+                y={cy - 3}
+                textAnchor="middle"
+                className="text-[16px] font-bold uppercase tracking-wider fill-neutral-600 dark:fill-neutral-300"
+                style={{ fontWeight: 700, letterSpacing: "0.06em" }}
+              >
+                Tickets
+              </text>
+            </svg>
+          </div>
+
+          {/* Right: Priority Box List displayed in 2x2 order */}
+          <div className="flex-1 grid grid-cols-2 gap-5 min-w-0">
+            {categories.map((item) => {
+              const IconComponent = item.icon;
+              return (
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between rounded-lg px-2 py-2 transition-colors border"
+                  style={{
+                    backgroundColor: "var(--bg)",
+                    borderColor: "var(--ln)",
+                    borderLeft: `3px solid ${item.color}`,
+                  }}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div
+                      className="flex h-4 w-4 items-center justify-center rounded-xs flex-shrink-0"
+                      style={{
+                        backgroundColor: `${item.color}15`,
+                        color: item.color,
+                      }}
+                    >
+                      <IconComponent size={10} />
+                    </div>
+                    <span className="font-bold text-black dark:text-white truncate text-sm">
+                      {item.label}
+                    </span>
+                  </div>
+                  <span className="font-extrabold font-mono text-black dark:text-white text-xs pl-1">
+                    {item.count}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Standard (non-compact) view for Admin / Approver / My Dashboard
   return (
     <div
       className={`rounded-xl border p-4 sm:p-5 shadow-xs flex flex-col justify-between h-full ${className}`}
@@ -156,7 +260,7 @@ function SemiCirclePriorityChart({ priorityStats, className = "" }) {
 
       {/* Top Section: Wider Half-Circle Gauge with Count & Tickets inside the circle */}
       <div className="flex-1 flex flex-col items-center justify-center py-1 sm:py-2">
-        <svg viewBox="0 0 280 126" className="w-full max-w-[260px] sm:max-w-[285px] overflow-visible">
+        <svg viewBox="0 0 280 126" className="w-full max-w-[260px] sm:max-w-[290px] lg:max-w-[320px] overflow-visible">
           {/* Base track */}
           <path
             d={`M ${cx - R} ${cy} A ${R} ${R} 0 0 1 ${cx + R} ${cy} L ${cx + r} ${cy} A ${r} ${r} 0 0 0 ${cx - r} ${cy} Z`}
@@ -276,6 +380,147 @@ function SemiCirclePriorityChart({ priorityStats, className = "" }) {
   );
 }
 
+// Status Donut/Pie chart
+function StatusDonutChart({ donutData, compact = false, className = "" }) {
+  return (
+    <div
+      className={`rounded-xl border shadow-xs flex flex-col justify-between ${
+        compact ? "p-3 sm:p-3.5 h-full" : "p-5 h-full"
+      } ${className}`}
+      style={{ backgroundColor: "var(--sf)", borderColor: "var(--ln)" }}
+    >
+      <div
+        className="flex items-center justify-between border-b pb-1.5 mb-1.5"
+        style={{ borderColor: "var(--ln)" }}
+      >
+        <h2 className="text-xs sm:text-sm font-bold text-black dark:text-white">
+          Tickets by Status
+        </h2>
+        <span className="text-[11px] font-bold text-gray-500">
+          {donutData.total} Total
+        </span>
+      </div>
+
+      <div
+        className={`flex-1 flex items-center justify-between text-2xl ${
+          compact
+            ? "gap-2.5 sm:gap-3.5 px-0.5 min-h-0"
+            : "flex-col sm:flex-row justify-center gap-6 py-3"
+        }`}
+      >
+        <div
+          className={`flex-shrink-0 flex items-center justify-center ${
+            compact ? "w-[140px] sm:w-[155px]" : ""
+          }`}
+        >
+          <div
+            className={`relative flex ${
+              compact ? "h-[120px] w-[120px] sm:h-[130px] sm:w-[130px]" : "h-36 w-36"
+            } flex-shrink-0 items-center justify-center rounded-full shadow-xs`}
+            style={{
+              background: donutData.total
+                ? `conic-gradient(${donutData.gradientStops})`
+                : "#eee",
+            }}
+          >
+            <div
+              className={`flex ${
+                compact ? "h-[65px] w-[65px] sm:h-[72px] sm:w-[72px]" : "h-20 w-20"
+              } flex-col items-center justify-center rounded-full shadow-inner`}
+              style={{ backgroundColor: "var(--sf)" }}
+            >
+              <span
+                className={`${
+                  compact ? "text-lg sm:text-xl" : "text-xl"
+                } font-extrabold text-black dark:text-white leading-none`}
+              >
+                {donutData.total}
+              </span>
+              <span
+                className={`${
+                  compact ? "text-[8px] sm:text-[9px]" : "text-xs"
+                } font-bold text-gray-500 mt-0.5`}
+              >
+                Tickets
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div
+          className={`flex-1 ${
+            compact ? "min-w-[120px] space-y-1" : "min-w-[140px] space-y-2"
+          } text-sm`}
+        >
+          {donutData.counts.map((item) => (
+            <div key={item.label} className="flex items-center justify-between gap-1.5">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span
+                  className="h-2 w-2 rounded-xs flex-shrink-0"
+                  style={{ backgroundColor: item.color }}
+                />
+                <span className="truncate text-black dark:text-gray-200 font-medium text-[13px]">
+                  {item.label}
+                </span>
+              </div>
+              <strong className="text-black dark:text-white font-mono text-sm pl-1">
+                {item.count}
+              </strong>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Category counts chart component
+function CategoryChart({ categoryCounts, maxCat, className = "" }) {
+  return (
+    <div
+      className={`rounded-xl border p-5 shadow-xs flex flex-col h-full max-h-[380px] ${className}`}
+      style={{ backgroundColor: "var(--sf)", borderColor: "var(--ln)" }}
+    >
+      <div className="border-b pb-2.5 mb-3" style={{ borderColor: "var(--ln)" }}>
+        <h2 className="text-sm font-bold text-black dark:text-white">
+          Tickets by Category
+        </h2>
+      </div>
+
+      {categoryCounts.length === 0 ? (
+        <EmptyState
+          icon={Ticket}
+          title="No data available"
+          message="No category breakdown available yet."
+          compact
+        />
+      ) : (
+        <div className="flex-1 overflow-y-auto hidden-scroll space-y-3 py-1">
+          {categoryCounts.map((c) => (
+            <div key={c.category} className="group">
+              <div className="flex justify-between text-xs mb-1">
+                <span className="font-semibold text-black dark:text-white">
+                  {c.category}
+                </span>
+                <b className="font-mono text-black dark:text-white">{c.count}</b>
+              </div>
+              <div className="h-2 w-full rounded-full bg-[#eeeafb] dark:bg-white/[0.05] overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-300"
+                  style={{
+                    width: `${(c.count / maxCat) * 100}%`,
+                    backgroundColor: "var(--pu)",
+                  }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Dashboard({ mode = "all" }) {
   const {
     me,
@@ -287,6 +532,8 @@ export default function Dashboard({ mode = "all" }) {
     getUser,
     decide,
     takeTicket,
+    categoryList,
+    departments: appDepartments,
   } = useApp();
 
   const [dbSummary, setDbSummary] = useState(null);
@@ -299,6 +546,7 @@ export default function Dashboard({ mode = "all" }) {
   const isEmployeeMode = isEmployeeRole || mode === "employee";
   const isMyMode = !isEmployeeRole && mode === "my";
   const isScopeMy = isMyMode || isEmployeeMode;
+  const isSupportAllTickets = role === "Support Team" && !isScopeMy;
 
   // Live PostgreSQL summary poll
   useEffect(() => {
@@ -501,7 +749,7 @@ export default function Dashboard({ mode = "all" }) {
 
     // 3. Support Team (All Tickets Dashboard)
     if (role === "Support Team") {
-      const poolOpenTickets = allTickets.filter((t) => t.status === "Open");
+      const poolOpenTickets = Array.isArray(poolTickets) ? poolTickets : [];
       const assignedInProgress = allTickets.filter(
         (t) =>
           ["In Progress", "Clarification Needed", "Pending"].includes(t.status) &&
@@ -549,10 +797,18 @@ export default function Dashboard({ mode = "all" }) {
       ];
     }
 
-    // 4. Approver (All Tickets Dashboard)
+    // 4. Approver (Dashboard)
     if (role === "Approver") {
-      const pendingTickets = allTickets.filter((t) => t.status === "Pending Approval");
-      const clarificationTickets = allTickets.filter((t) => t.status === "Clarification Needed");
+      const pendingTickets = allTickets.filter(
+        (t) =>
+          t.status === "Pending Approval" &&
+          Number(t.approver_id || t.approver) === currentId
+      );
+      const clarificationTickets = allTickets.filter(
+        (t) =>
+          t.status === "Clarification Needed" &&
+          Number(t.approver_id || t.approver) === currentId
+      );
       const approvedByMe = allTickets.filter(
         (t) =>
           ["In Progress", "Open"].includes(t.status) &&
@@ -565,7 +821,11 @@ export default function Dashboard({ mode = "all" }) {
                   Number(h.by) === currentId
               )))
       );
-      const rejectedTickets = allTickets.filter((t) => t.status === "Rejected");
+      const rejectedTickets = allTickets.filter(
+        (t) =>
+          t.status === "Rejected" &&
+          (Number(t.approver_id || t.approver) === currentId || Number(t.by) === currentId)
+      );
 
       return [
         {
@@ -653,7 +913,7 @@ export default function Dashboard({ mode = "all" }) {
         tickets: rejectedTickets,
       },
     ];
-  }, [isMyMode, isEmployeeMode, role, allTickets, myTickets, currentId]);
+  }, [isMyMode, isEmployeeMode, role, allTickets, myTickets, poolTickets, currentId]);
 
   // Priority breakdown for semi-circular chart
   const priorityStats = useMemo(() => {
@@ -666,76 +926,112 @@ export default function Dashboard({ mode = "all" }) {
     return { critical, high, medium, low, total };
   }, [isScopeMy, myTickets, allTickets]);
 
-  // Category counts matching mockup (ensuring all 6 categories including Printing & Scanning)
+  // Category counts fetched dynamically from DB (categoryList / dbSummary)
   const categoryCounts = useMemo(() => {
-    const defaultCategories = [
-      "Software & Applications",
-      "Hardware & Devices",
-      "Network & Connectivity",
-      "Others",
-      "Accounts & Access",
-      "Printing & Scanning",
-    ];
-
     const map = {};
-    defaultCategories.forEach((cat) => {
-      map[cat] = 0;
-    });
 
+    // 1. Initialize map with all active categories from DB
+    if (categoryList && categoryList.length > 0) {
+      categoryList.forEach((c) => {
+        const name = typeof c === "string" ? c : c.name;
+        if (name) map[name] = 0;
+      });
+    } else if (dbSummary?.byCategory?.length) {
+      dbSummary.byCategory.forEach((c) => {
+        if (c.category) map[c.category] = 0;
+      });
+    } else {
+      [
+        "Software & Applications",
+        "Hardware & Devices",
+        "Network & Connectivity",
+        "Others",
+        "Accounts & Access",
+        "Printing & Scanning",
+      ].forEach((cat) => {
+        map[cat] = 0;
+      });
+    }
+
+    // 2. Count tickets for each category from scoped tickets
     const list = isScopeMy ? myTickets : allTickets;
     list.forEach((t) => {
       const cat = t.cat ? t.cat.split(" › ")[0] : "General";
       map[cat] = (map[cat] || 0) + 1;
     });
 
-    if (dbSummary?.byCategory?.length) {
-      dbSummary.byCategory.forEach((item) => {
-        if (item.category) {
-          map[item.category] = (map[item.category] || 0) + (Number(item.count) || 0);
-        }
-      });
-    }
-
-    return Object.entries(map).map(([category, count]) => ({ category, count }));
-  }, [dbSummary, isScopeMy, myTickets, allTickets]);
+    return Object.entries(map)
+      .map(([category, count]) => ({ category, count }))
+      .sort((a, b) => b.count - a.count);
+  }, [categoryList, dbSummary, isScopeMy, myTickets, allTickets]);
 
   const maxCat = Math.max(1, ...categoryCounts.map((c) => c.count));
 
-  // Department counts with per-status breakdown matching mockup deptBars() & sbar()
+  // Department counts with per-status breakdown directly from DB departments table
   const deptCounts = useMemo(() => {
-  // Use backend aggregated data for department totals and per‑status counts
-  if (!dbSummary?.byDepartment?.length) {
-    return { list: [], max: 1 };
-  }
+    // For Approvers and non-Admins, build department breakdown directly from their scoped tickets
+    if (role !== "Admin") {
+      const list = isScopeMy ? myTickets : allTickets;
+      if (!list.length) return { list: [], max: 1 };
 
-  // Build a map of departments with total count
-  const deptMap = {};
-  dbSummary.byDepartment.forEach(item => {
-    const dept = item.department || "Other";
-    deptMap[dept] = { total: Number(item.count), statuses: {} };
-  });
+      const deptMap = {};
+      list.forEach((t) => {
+        const dept = t.creator_dept || t.byDept || t.department || "Other";
+        const status = t.status || "Open";
+        if (!deptMap[dept]) {
+          deptMap[dept] = { total: 0, statuses: {} };
+        }
+        deptMap[dept].total += 1;
+        deptMap[dept].statuses[status] = (deptMap[dept].statuses[status] || 0) + 1;
+      });
 
-  // Merge per‑status breakdown (deptStatus) into the map
-  if (dbSummary.deptStatus) {
-    dbSummary.deptStatus.forEach(item => {
-      const dept = item.department || "Other";
-      const status = item.status;
-      const count = Number(item.count);
-      if (!deptMap[dept]) {
-        deptMap[dept] = { total: 0, statuses: {} };
-      }
-      deptMap[dept].statuses[status] = (deptMap[dept].statuses[status] || 0) + count;
-    });
-  }
+      const listResult = Object.entries(deptMap)
+        .map(([dept, data]) => ({ dept, total: data.total, statuses: data.statuses }))
+        .sort((a, b) => b.total - a.total);
 
-  const list = Object.entries(deptMap)
-    .map(([dept, data]) => ({ dept, total: data.total, statuses: data.statuses }))
-    .sort((a, b) => b.total - a.total)
-    .slice(0, 5);
+      const max = Math.max(1, ...listResult.map((x) => x.total));
+      return { list: listResult, max };
+    }
 
-  const max = Math.max(1, ...list.map(x => x.total));
-  return { list, max };
-}, [dbSummary]);
+    // For Admin: use backend aggregated data for department totals and per‑status counts
+    const deptMap = {};
+
+    // Seed all active departments from AppContext (fetched from DB /api/departments)
+    if (Array.isArray(appDepartments)) {
+      appDepartments.forEach((d) => {
+        const name = typeof d === "string" ? d : d?.name;
+        if (name) deptMap[name] = { total: 0, statuses: {} };
+      });
+    }
+
+    // Merge backend aggregated counts from DB
+    if (dbSummary?.byDepartment?.length) {
+      dbSummary.byDepartment.forEach((item) => {
+        const dept = item.department || "Other";
+        deptMap[dept] = { total: Number(item.count || 0), statuses: {} };
+      });
+    }
+
+    // Merge per‑status breakdown (deptStatus) into the map
+    if (dbSummary?.deptStatus) {
+      dbSummary.deptStatus.forEach((item) => {
+        const dept = item.department || "Other";
+        const status = item.status;
+        const count = Number(item.count || 0);
+        if (!deptMap[dept]) {
+          deptMap[dept] = { total: 0, statuses: {} };
+        }
+        deptMap[dept].statuses[status] = (deptMap[dept].statuses[status] || 0) + count;
+      });
+    }
+
+    const list = Object.entries(deptMap)
+      .map(([dept, data]) => ({ dept, total: data.total, statuses: data.statuses }))
+      .sort((a, b) => b.total - a.total);
+
+    const max = Math.max(1, ...list.map((x) => x.total));
+    return { list, max };
+  }, [role, isScopeMy, myTickets, allTickets, dbSummary, appDepartments]);
 
   // Status donut calculation matching mockup donut()
   const donutData = useMemo(() => {
@@ -769,16 +1065,20 @@ export default function Dashboard({ mode = "all" }) {
       return myTickets;
     }
     if (role === "Approver") {
-      return allTickets.slice(0, 10);
+      return allTickets.filter(
+        (t) =>
+          Number(t.approver_id || t.approver) === currentId ||
+          Number(t.by || t.created_by) === currentId
+      ).slice(0, 10);
     }
     if (role === "Support Team") {
-      return allTickets.filter((x) => x.status === "Open");
+      return Array.isArray(poolTickets) ? poolTickets : [];
     }
     // Admin / All: Needs Attention · High & Critical (live tickets)
     return allTickets.filter(
       (x) => ["High", "Critical"].includes(x.priority) && !["Resolved", "Rejected"].includes(x.status)
     );
-  }, [isScopeMy, role, myTickets, allTickets]);
+  }, [isScopeMy, role, myTickets, allTickets, poolTickets]);
 
   const activeKpi = useMemo(() => {
     if (!activeKpiFilterId) return null;
@@ -792,6 +1092,8 @@ export default function Dashboard({ mode = "all" }) {
         subtitle={
           isScopeMy
             ? `Showing tickets raised by you under "${activeKpi.label}".`
+            : role === "Approver"
+            ? `Showing tickets assigned to you under "${activeKpi.label}".`
             : `Showing all organizational tickets under "${activeKpi.label}".`
         }
         tickets={activeKpi.tickets}
@@ -808,10 +1110,10 @@ export default function Dashboard({ mode = "all" }) {
       <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b" style={{ borderColor: "var(--ln)" }}>
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-black dark:text-white">
-            {isMyMode ? "My Dashboard" : role === "Employee" ? "Dashboard" : "All Tickets Dashboard"}
+            {isMyMode ? "My Dashboard" : role === "Employee" || role === "Approver" ? "Dashboard" : "All Tickets Dashboard"}
           </h1>
           <p className="mt-1 text-xs" style={{ color: "var(--mu)" }}>
-            {isScopeMy ? "Tickets you have raised." : "Every ticket in the organization."}
+            {isScopeMy ? "Tickets you have raised." : role === "Approver" ? "Tickets assigned for your approval and department." : "Every ticket in the organization."}
           </p>
         </div>
       </div>
@@ -875,15 +1177,15 @@ export default function Dashboard({ mode = "all" }) {
       </section>
 
       {/* Main Grid Row 1: Left Table (1.6fr) + Right Chart (1fr) */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-12 items-stretch">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-12 items-stretch ">
         {/* Table Panel matching Mockup */}
         <div
-          className={`lg:col-span-7 rounded-xl border shadow-xs overflow-hidden flex flex-col justify-between ${
-            isScopeMy ? "min-h-[380px] lg:min-h-[400px]" : ""
+          className={`lg:col-span-7 rounded-xl border shadow-xs overflow-hidden flex flex-col ${
+            isSupportAllTickets ? "h-[450px]" : isScopeMy ? "min-h-[380px] lg:min-h-[322px]" : "h-[350px]"
           }`}
           style={{ backgroundColor: "var(--sf)", borderColor: "var(--ln)" }}
         >
-          <div className="flex items-center justify-between border-b px-4 py-3" style={{ borderColor: "var(--ln)" }}>
+          <div className="flex items-center justify-between border-b px-4 py-2.5" style={{ borderColor: "var(--ln)" }}>
             <h2 className="text-sm font-bold text-black dark:text-white">
               {isScopeMy
                 ? "My Tickets"
@@ -917,18 +1219,20 @@ export default function Dashboard({ mode = "all" }) {
               />
             </div>
           ) : (
-            <div className={`flex-1 overflow-y-auto overflow-x-auto hidden-scroll ${
-              isMyMode ? "max-h-[320px] lg:max-h-[350px]" : "max-h-[352px]"
+            <div className={`overflow-y-auto overflow-x-auto hidden-scroll flex-1 min-h-0 ${
+              isSupportAllTickets ? "min-h-0" : isMyMode ? "max-h-[320px] lg:max-h-[350px]" : ""
             }`}>
               <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="border-b bg-[#f8f6fd] dark:bg-white/[0.02]" style={{ borderColor: "var(--ln)" }}>
-                    <th className="px-3.5 py-2.5 font-bold uppercase tracking-wider text-xs text-black dark:text-white">ID</th>
-                    <th className="px-3.5 py-2.5 font-bold uppercase tracking-wider text-xs text-black dark:text-white">Short Description</th>
-                    <th className="px-3.5 py-2.5 font-bold uppercase tracking-wider text-xs text-black dark:text-white">Priority</th>
-                    <th className="px-3.5 py-2.5 font-bold uppercase tracking-wider text-xs text-black dark:text-white">Status</th>
+                <thead className="sticky top-0 z-10" style={{ backgroundColor: "var(--sf)" }}>
+                  <tr className="border-b bg-[#f8f6fd] dark:bg-white/[0.04]" style={{ borderColor: "var(--ln)" }}>
+                    <th className="px-3.5 py-2 font-bold uppercase tracking-wider text-xs text-black dark:text-white">ID</th>
+                    <th className="px-3.5 py-2 font-bold uppercase tracking-wider text-xs text-black dark:text-white">Short Description</th>
+                    <th className="px-3.5 py-2 font-bold uppercase tracking-wider text-xs text-black dark:text-white">Priority</th>
+                    {!isSupportAllTickets && (
+                      <th className="px-3.5 py-2 font-bold uppercase tracking-wider text-xs text-black dark:text-white">Status</th>
+                    )}
                     {!isScopeMy && (
-                      <th className="px-3.5 py-2.5 font-bold uppercase tracking-wider text-xs text-black dark:text-white">
+                      <th className="px-3.5 py-2 font-bold uppercase tracking-wider text-xs text-black dark:text-white">
                         Raised By
                       </th>
                     )}
@@ -939,23 +1243,27 @@ export default function Dashboard({ mode = "all" }) {
                     <tr
                       key={t.id}
                       onClick={() => setSel(t.id)}
-                      className="border-b transition-colors cursor-pointer hover:bg-[#fbfaff] dark:hover:bg-white/5"
+                      className={`border-b transition-colors cursor-pointer hover:bg-[#fbfaff] dark:hover:bg-white/5 ${
+                        isSupportAllTickets ? "h-[36px]" : "h-[42px]"
+                      }`}
                       style={{ borderColor: "var(--ln)" }}
                     >
-                      <td className="px-3.5 py-3 font-mono font-bold" style={{ color: "var(--pu)" }}>
+                      <td className="px-3.5 py-1.5 font-mono font-bold" style={{ color: "var(--pu)" }}>
                         {t.id}
                       </td>
-                      <td className="px-3.5 py-3 font-semibold max-w-[200px] truncate text-black dark:text-white">
+                      <td className="px-3.5 py-1.5 font-semibold max-w-[240px] truncate text-black dark:text-white">
                         {t.title}
                       </td>
-                      <td className="px-3.5 py-3 font-bold whitespace-nowrap">
+                      <td className="px-3.5 py-1.5 font-bold whitespace-nowrap">
                         {getPriorityDot(t.priority)}
                       </td>
-                      <td className="px-3.5 py-3 whitespace-nowrap">
-                        {getStatusBadge(t.status)}
-                      </td>
+                      {!isSupportAllTickets && (
+                        <td className="px-3.5 py-1.5 whitespace-nowrap">
+                          {getStatusBadge(t.status)}
+                        </td>
+                      )}
                       {!isScopeMy && (
-                        <td className="px-3.5 py-3 whitespace-nowrap">
+                        <td className="px-3.5 py-1.5 whitespace-nowrap">
                           <span className="font-normal text-black dark:text-white">
                             {t.byName || getUser(t.by)}
                           </span>
@@ -967,17 +1275,51 @@ export default function Dashboard({ mode = "all" }) {
               </table>
             </div>
           )}
+
+          {isSupportAllTickets && tableTickets.length > 0 && (
+            <div
+              className="flex items-center justify-between px-3.5 py-1.5 border-t text-[11px] font-medium text-gray-500 dark:text-gray-400 bg-[#faf9fe] dark:bg-white/[0.02]"
+              style={{ borderColor: "var(--ln)" }}
+            >
+              <span>{tableTickets.length} open tickets in pool</span>
+              <span className="text-[10px] text-gray-400">
+                {tableTickets.length > 6 ? "Scroll for more ↓" : "All tickets shown"}
+              </span>
+            </div>
+          )}
         </div>
 
-        {/* Right Panel: In My / Employee Dashboard show Tickets by Priority here; in All Tickets Dashboard show Tickets by Category */}
-        <div className={`lg:col-span-5 flex flex-col ${isScopeMy ? "min-h-[380px] lg:min-h-[400px]" : ""}`}>
+        {/* Right Panel:
+            - In My / Employee Dashboard: SemiCirclePriorityChart
+            - In Support Team All Tickets Dashboard: Status on top + Priority on bottom
+            - In Approver Dashboard: Status Donut (Category moves to Row 2 full-width)
+            - In Admin All Tickets Dashboard: Tickets by Category
+        */}
+        <div className={`lg:col-span-5 flex flex-col ${isSupportAllTickets ? "h-[450px]" : isScopeMy ? "h-[380px] lg:min-h-[400px]" : "h-[350px]"}`}>
           {isScopeMy ? (
             <div className="flex-1 flex flex-col h-full">
               <SemiCirclePriorityChart priorityStats={priorityStats} />
             </div>
+          ) : isSupportAllTickets ? (
+            <div className="flex flex-col gap-3 h-full">
+              {/* Top: Status Pie / Donut Chart */}
+              <div className="h-[220px]">
+                <StatusDonutChart donutData={donutData} compact={true} />
+              </div>
+              {/* Bottom: Priority Half-circle Chart */}
+              <div className="h-[220px]">
+                <SemiCirclePriorityChart priorityStats={priorityStats} compact={true} />
+              </div>
+            </div>
+          ) : role === "Approver" ? (
+            /* Approver: Status Donut shown here; Category goes to Row 2 */
+            <div className="flex-1 flex flex-col h-full">
+              <StatusDonutChart donutData={donutData} />
+            </div>
           ) : (
+            /* Admin: Category chart in right panel */
             <div
-              className="rounded-xl border p-5 shadow-xs flex-1 flex flex-col"
+              className="rounded-xl border p-5 shadow-xs flex-1 flex flex-col h-full min-h-0"
               style={{ backgroundColor: "var(--sf)", borderColor: "var(--ln)" }}
             >
               <h2 className="text-sm font-bold text-black dark:text-white pb-2.5 border-b mb-3" style={{ borderColor: "var(--ln)" }}>
@@ -992,7 +1334,7 @@ export default function Dashboard({ mode = "all" }) {
                   compact
                 />
               ) : (
-                <div className="flex-1 flex flex-col justify-between py-1">
+                <div className="flex-1 flex flex-col space-y-3 py-1 overflow-y-auto hidden-scroll min-h-0">
                   {categoryCounts.map((c) => (
                     <div key={c.category} className="group">
                       <div className="flex justify-between text-xs mb-1">
@@ -1020,115 +1362,85 @@ export default function Dashboard({ mode = "all" }) {
       </div>
 
       {/* Main Grid Row 2 */}
-      {!isScopeMy ? (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-stretch">
-          {/* Panel 1: Tickets by Status (Donut chart matching mockup - enlarged and centered) */}
-          <div
-            className="rounded-xl border p-5 shadow-xs flex flex-col justify-between"
-            style={{ backgroundColor: "var(--sf)", borderColor: "var(--ln)" }}
-          >
-            <div className="flex items-center justify-between border-b pb-2 mb-3" style={{ borderColor: "var(--ln)" }}>
-              <h2 className="text-sm font-bold text-black dark:text-white">
-                Tickets by Status
-              </h2>
-              <span className="text-xs font-bold text-gray-500">
-                {donutData.total} Total
-              </span>
+      {!isScopeMy && !isSupportAllTickets ? (
+        role === "Approver" ? (
+          /* Approver Row 2: Category (wide, matches ticket table) + Priority (wider half-circle) */
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch lg:max-h-[380px]">
+            {/* Category chart — col-span-8 to match ticket table width */}
+            <div className="lg:col-span-7 ">
+              <CategoryChart categoryCounts={categoryCounts} maxCat={maxCat} />
             </div>
-
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-6 py-3">
-              <div
-                className="relative flex h-36 w-36 flex-shrink-0 items-center justify-center rounded-full shadow-sm"
-                style={{
-                  background: donutData.total
-                    ? `conic-gradient(${donutData.gradientStops})`
-                    : "#eee",
-                }}
-              >
-                <div
-                  className="flex h-20 w-20 flex-col items-center justify-center rounded-full shadow-inner"
-                  style={{ backgroundColor: "var(--sf)" }}
-                >
-                  <span className="text-2xl font-extrabold text-black dark:text-white leading-none">
-                    {donutData.total}
-                  </span>
-                  <span className="text-xs font-bold text-gray-500 mt-0.5">
-                    Tickets
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex-1 min-w-[140px] space-y-2 text-xs">
-                {donutData.counts.map((item) => (
-                  <div key={item.label} className="flex items-center gap-2">
-                    <span className="h-2.5 w-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: item.color }} />
-                    <span className="flex-1 truncate text-black dark:text-gray-200 font-medium">{item.label}</span>
-                    <strong className="text-black dark:text-white font-mono text-sm">{item.count}</strong>
-                  </div>
-                ))}
-              </div>
+            {/* Priority half-circle — col-span-4 (slightly wider) */}
+            <div className="lg:col-span-5">
+              <SemiCirclePriorityChart priorityStats={priorityStats} />
             </div>
           </div>
+        ) : (
+          /* Admin / other roles Row 2: Status | Dept | Priority */
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-stretch">
+            {/* Panel 1: Tickets by Status */}
+            <StatusDonutChart donutData={donutData} />
 
-          {/* Panel 2: Tickets by Department matching mockup deptBars() */}
-          <div
-            className="rounded-xl border p-5 shadow-xs flex flex-col justify-between"
-            style={{ backgroundColor: "var(--sf)", borderColor: "var(--ln)" }}
-          >
-            <div className="border-b pb-2 mb-3" style={{ borderColor: "var(--ln)" }}>
-              <h2 className="text-sm font-bold text-black dark:text-white">
-                Tickets by Department
-              </h2>
-            </div>
+            {/* Panel 2: Tickets by Department matching mockup deptBars() */}
+            <div
+              className="rounded-xl border p-5 shadow-xs flex flex-col justify-between"
+              style={{ backgroundColor: "var(--sf)", borderColor: "var(--ln)" }}
+            >
+              <div className="border-b pb-2 mb-3" style={{ borderColor: "var(--ln)" }}>
+                <h2 className="text-sm font-bold text-black dark:text-white">
+                  Tickets by Department
+                </h2>
+              </div>
 
-            {deptCounts.list.length === 0 ? (
-              <EmptyState
-                icon={Users}
-                title="No data available"
-                message="Department data will appear as tickets arrive."
-                compact
-              />
-            ) : (
-              <div className="space-y-3 py-1 flex-1 flex flex-col justify-evenly">
-                {deptCounts.list.map(({ dept, total, statuses }) => (
-                  <div key={dept} className="dp">
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="font-semibold text-black dark:text-white">{dept}</span>
-                      <b className="font-mono text-black dark:text-white">{total}</b>
-                    </div>
-                    {/* Outer container sized relative to max department total */}
-                    <div style={{ width: `${(total / deptCounts.max) * 100}%` }}>
-                      {/* Stacked segmented bar where colors follow ticket status */}
-                      <div className="flex h-2 w-full rounded-full bg-[#eeeafb] dark:bg-white/[0.05] overflow-hidden">
-                        {Object.entries(statuses).map(([status, count]) => {
-                          const color = SC[status] || "var(--pu)";
-                          const widthPct = (count / total) * 100;
-                          return (
-                            <span
-                              key={status}
-                              title={`${status}: ${count}`}
-                              style={{
-                                width: `${widthPct}%`,
-                                backgroundColor: color,
-                              }}
-                              className="h-full block transition-all duration-300"
-                            />
-                          );
-                        })}
+              {deptCounts.list.length === 0 ? (
+                <EmptyState
+                  icon={Users}
+                  title="No data available"
+                  message="Department data will appear as tickets arrive."
+                  compact
+                />
+              ) : (
+                <div className="space-y-3 py-1 flex-1 flex flex-col overflow-y-auto hidden-scroll max-h-[260px]">
+                  {deptCounts.list.map(({ dept, total, statuses }) => (
+                    <div key={dept} className="dp">
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="font-semibold text-black dark:text-white">{dept}</span>
+                        <b className="font-mono text-black dark:text-white">{total}</b>
+                      </div>
+                      {/* Outer container sized relative to max department total */}
+                      <div style={{ width: `${(total / deptCounts.max) * 100}%` }}>
+                        {/* Stacked segmented bar where colors follow ticket status */}
+                        <div className="flex h-2 w-full rounded-full bg-[#eeeafb] dark:bg-white/[0.05] overflow-hidden">
+                          {Object.entries(statuses).map(([status, count]) => {
+                            const color = SC[status] || "var(--pu)";
+                            const widthPct = (count / total) * 100;
+                            return (
+                              <span
+                                key={status}
+                                title={`${status}: ${count}`}
+                                style={{
+                                  width: `${widthPct}%`,
+                                  backgroundColor: color,
+                                }}
+                                className="h-full block transition-all duration-300"
+                              />
+                            );
+                          })}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-                <p className="text-xs mt-2 pt-1 font-normal text-black dark:text-white" style={{ color: "var(--mu)" }}>
-                  Bar colours follow ticket status.
-                </p>
-              </div>
-            )}
-          </div>
+                  ))}
+                  <p className="text-xs mt-2 pt-1 font-normal text-black dark:text-white" style={{ color: "var(--mu)" }}>
+                    Bar colours follow ticket status.
+                  </p>
+                </div>
+              )}
+            </div>
 
-          {/* Panel 3: Tickets by Priority (Semi-circular chart replacing vertical bar chart) */}
-          <SemiCirclePriorityChart priorityStats={priorityStats} />
-        </div>
+            {/* Panel 3: Tickets by Priority (Semi-circular chart replacing vertical bar chart) */}
+            <SemiCirclePriorityChart priorityStats={priorityStats} />
+          </div>
+        )
       ) : null}
     </div>
   );

@@ -2,11 +2,12 @@
 
 import React, { useState } from "react";
 import { useApp } from "@/context/AppContext";
-import { CATEGORIES, formatFileSize } from "@/lib/constants";
+import { formatFileSize } from "@/lib/constants";
+import { useHierarchy } from "@/hooks/useHierarchy";
 import { Trash2, Paperclip, Send } from "lucide-react";
 
 export default function NewTicketView() {
-  const { draft, updateDraft, submitTicket, me, setDraft, setView } = useApp();
+  const { draft, updateDraft, submitTicket, me, setDraft, setView, showToast } = useApp();
   const [attachments, setAttachments] = useState([]);
   const [ticketDate, setTicketDate] = useState(
     new Date().toLocaleDateString("en-CA")
@@ -14,13 +15,10 @@ export default function NewTicketView() {
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
-  const categories = Object.keys(CATEGORIES);
-  const subCategories =
-    draft.cat && CATEGORIES[draft.cat] ? Object.keys(CATEGORIES[draft.cat]) : [];
-  const items =
-    draft.cat && draft.sub && CATEGORIES[draft.cat][draft.sub]
-      ? CATEGORIES[draft.cat][draft.sub]
-      : [];
+  const { categories, subCategories, items, loading } = useHierarchy();
+
+  const filteredSubCategories = draft.catId ? subCategories.filter(sc => sc.category_id === draft.catId) : [];
+  const filteredItems = draft.subId ? items.filter(it => it.sub_category_id === draft.subId) : [];
 
   // -------------------------------------------------
   // Validation
@@ -62,8 +60,11 @@ export default function NewTicketView() {
   const handleCancel = () => {
     setDraft({
       cat: "",
+      catId: undefined,
       sub: "",
+      subId: undefined,
       item: "",
+      itemId: undefined,
       title: "",
       desc: "",
       pr: "Medium",
@@ -261,9 +262,18 @@ export default function NewTicketView() {
                   Category <span style={{ color: "var(--rd)" }}>*</span>
                 </label>
                 <select
-                  value={draft.cat}
+                  value={draft.catId || ""}
                   onChange={(e) => {
-                    updateDraft("cat", e.target.value);
+                    const selectedId = Number(e.target.value);
+                    const cat = categories.find((c) => c.category_id === selectedId);
+                    updateDraft({
+                      cat: cat?.name || "",
+                      catId: selectedId || undefined,
+                      sub: "",
+                      subId: undefined,
+                      item: "",
+                      itemId: undefined,
+                    });
                     if (errors.cat) setErrors((p) => ({ ...p, cat: null }));
                   }}
                   className="w-full px-3 py-2 rounded-lg text-sm text-black dark:text-gray-100 border focus:outline-hidden cursor-pointer transition-colors"
@@ -271,8 +281,8 @@ export default function NewTicketView() {
                 >
                   <option value="">-- Select Category --</option>
                   {categories.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
+                    <option key={c.category_id} value={c.category_id}>
+                      {c.name}
                     </option>
                   ))}
                 </select>
@@ -288,19 +298,26 @@ export default function NewTicketView() {
                   Sub Category <span style={{ color: "var(--rd)" }}>*</span>
                 </label>
                 <select
-                  disabled={!draft.cat}
-                  value={draft.sub}
+                  disabled={!draft.catId}
+                  value={draft.subId || ""}
                   onChange={(e) => {
-                    updateDraft("sub", e.target.value);
+                    const selectedId = Number(e.target.value);
+                    const sub = subCategories.find((sc) => sc.sub_category_id === selectedId);
+                    updateDraft({
+                      sub: sub?.name || "",
+                      subId: selectedId || undefined,
+                      item: "",
+                      itemId: undefined,
+                    });
                     if (errors.sub) setErrors((p) => ({ ...p, sub: null }));
                   }}
                   className="w-full px-3 py-2 rounded-lg text-sm text-black dark:text-gray-100 border focus:outline-hidden cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   style={{ backgroundColor: "var(--sf)", borderColor: "var(--ln)" }}
                 >
                   <option value="">-- Select Sub Category --</option>
-                  {subCategories.map((sc) => (
-                    <option key={sc} value={sc}>
-                      {sc}
+                  {filteredSubCategories.map((sc) => (
+                    <option key={sc.sub_category_id} value={sc.sub_category_id}>
+                      {sc.name}
                     </option>
                   ))}
                 </select>
@@ -316,19 +333,24 @@ export default function NewTicketView() {
                   Item <span style={{ color: "var(--rd)" }}>*</span>
                 </label>
                 <select
-                  disabled={!draft.sub}
-                  value={draft.item}
+                  disabled={!draft.subId}
+                  value={draft.itemId || ""}
                   onChange={(e) => {
-                    updateDraft("item", e.target.value);
+                    const selectedId = Number(e.target.value);
+                    const it = items.find((i) => i.item_id === selectedId);
+                    updateDraft({
+                      item: it?.name || "",
+                      itemId: selectedId || undefined,
+                    });
                     if (errors.item) setErrors((p) => ({ ...p, item: null }));
                   }}
                   className="w-full px-3 py-2 rounded-lg text-sm text-black dark:text-gray-100 border focus:outline-hidden cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   style={{ backgroundColor: "var(--sf)", borderColor: "var(--ln)" }}
                 >
                   <option value="">-- Select Item --</option>
-                  {items.map((it) => (
-                    <option key={it} value={it}>
-                      {it}
+                  {filteredItems.map((it) => (
+                    <option key={it.item_id} value={it.item_id}>
+                      {it.name}
                     </option>
                   ))}
                 </select>

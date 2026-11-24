@@ -6,10 +6,11 @@ import jwt from 'jsonwebtoken';
 export const loginUser = async (email, password) => {
   // 1. Find employee by email
   const query = `
-    SELECT employee_id, name, email, password_hash, role, active,
-       must_change_password
-FROM employees
-WHERE email = $1
+    SELECT e.employee_id, e.name, e.email, e.department, e.password_hash, e.role, e.active,
+           e.must_change_password, e.manager_id, m.name AS manager_name
+    FROM employees e
+    LEFT JOIN employees m ON m.employee_id = e.manager_id
+    WHERE e.email = $1
   `;
 
   const result = await pool.query(query, [email]);
@@ -53,9 +54,39 @@ WHERE email = $1
       employee_id: user.employee_id,
       name: user.name,
       email: user.email,
+      department: user.department,
       role: user.role,
+      manager_id: user.manager_id,
+      manager_name: user.manager_name,
       must_change_password: user.must_change_password
     }
+  };
+};
+
+export const getMe = async (employeeId) => {
+  const query = `
+    SELECT e.employee_id, e.name, e.email, e.department, e.role, e.active,
+           e.must_change_password, e.manager_id, m.name AS manager_name
+    FROM employees e
+    LEFT JOIN employees m ON m.employee_id = e.manager_id
+    WHERE e.employee_id = $1
+  `;
+  const result = await pool.query(query, [employeeId]);
+  const user = result.rows[0];
+  if (!user || !user.active) {
+    throw new Error('User not found or deactivated');
+  }
+  return {
+    employee_id: user.employee_id,
+    id: user.employee_id,
+    name: user.name,
+    email: user.email,
+    department: user.department,
+    dept: user.department,
+    role: user.role,
+    manager_id: user.manager_id,
+    manager_name: user.manager_name,
+    must_change_password: user.must_change_password
   };
 };
 

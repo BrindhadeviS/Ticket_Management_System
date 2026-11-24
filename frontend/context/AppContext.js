@@ -12,6 +12,8 @@ import {
 } from "@/lib/constants";
 import {
   loginToBackend,
+  fetchMeFromBackend,
+  logoutFromBackend,
   createEmployeeInBackend,
   fetchEmployeesFromBackend,
   fetchTicketsFromBackend,
@@ -36,6 +38,8 @@ import {
   fetchNotificationsFromBackend,
   markNotificationAsReadInBackend,
   markAllNotificationsAsReadInBackend,
+  fetchCategoriesFromBackend,
+  fetchDepartmentsFromBackend,
 } from "@/lib/api";
 import { getPasswordError } from "@/lib/passwordRules";
 
@@ -50,6 +54,8 @@ export function AppProvider({ children }) {
   const [emails, setEmails] = useState([]);
   const [notifs, setNotifs] = useState([]);
   const [resets, setResets] = useState([]);
+  const [categoryList, setCategoryList] = useState([]);
+  const [departments, setDepartments] = useState([]);
   const [me, setMe] = useState(null);
   const [view, setView] = useState("dash");
   const [sel, setSel] = useState(null);
@@ -69,51 +75,48 @@ export function AppProvider({ children }) {
   const [toast, setToast] = useState({ visible: false, message: "" });
   const [theme, setTheme] = useState("light");
 
-  // Load user session from backend on client mount
+  // Load user session from backend on client mount (purely from backend cookie)
   useEffect(() => {
     setMounted(true);
+    // Clear out any obsolete legacy localStorage keys once
     try {
-      const savedMe = localStorage.getItem("tms_me");
-      const savedTheme = localStorage.getItem("tms_theme");
+      localStorage.removeItem("tms_token");
+      localStorage.removeItem("tms_me");
+      localStorage.removeItem("tms_view");
+      localStorage.removeItem("tms_theme");
+    } catch (_) {}
 
-      if (savedMe) {
-        const parsedMe = JSON.parse(savedMe);
-        const normalized = {
-          ...parsedMe,
-          id: parsedMe.employee_id || parsedMe.id,
-          employee_id: parsedMe.employee_id || parsedMe.id,
-        };
-        setMe(normalized);
-        const defaultNav = ROLE_NAV[normalized.role]
-          ? ROLE_NAV[normalized.role][0].key
-          : "dash";
-        const savedView = localStorage.getItem("tms_view");
-        setView(savedView || defaultNav);
-        syncWithBackend(normalized);
+    let isCancelled = false;
+
+    const hydrateSession = async () => {
+      try {
+        const currentUser = await fetchMeFromBackend();
+        if (currentUser && !isCancelled) {
+          const normalized = {
+            ...currentUser,
+            id: currentUser.employee_id || currentUser.id,
+            employee_id: currentUser.employee_id || currentUser.id,
+            must: currentUser.must_change_password,
+          };
+          setMe(normalized);
+          const defaultNav = ROLE_NAV[normalized.role]
+            ? ROLE_NAV[normalized.role][0].key
+            : "dash";
+          setView(defaultNav);
+          await syncWithBackend(normalized);
+        }
+      } catch (e) {
+        // Not authenticated
+        if (!isCancelled) setMe(null);
       }
-      const activeTheme = savedTheme || "light";
-      setTheme(activeTheme);
-      document.documentElement.setAttribute("data-theme", activeTheme);
-    } catch (e) {
-      console.warn("Error hydrating user session:", e);
-    }
+    };
+
+    hydrateSession();
+
+    return () => {
+      isCancelled = true;
+    };
   }, []);
-
-  useEffect(() => {
-    if (!mounted) return;
-    try {
-      if (me) {
-        localStorage.setItem("tms_me", JSON.stringify(me));
-      } else {
-        localStorage.removeItem("tms_me");
-      }
-      if (view) {
-        localStorage.setItem("tms_view", view);
-      }
-    } catch (e) {
-      console.warn("Storage quota exceeded", e);
-    }
-  }, [me, view, mounted]);
 
   // Auto-refresh data without reloading the page
   useEffect(() => {
@@ -152,7 +155,6 @@ export function AppProvider({ children }) {
     const nextTheme = theme === "light" ? "dark" : "light";
     setTheme(nextTheme);
     document.documentElement.setAttribute("data-theme", nextTheme);
-    localStorage.setItem("tms_theme", nextTheme);
   };
 
   const showToast = (message, onConfirm = null) => {
@@ -237,6 +239,25 @@ export function AppProvider({ children }) {
   };
 
   const syncWithBackend = async (loggedInUser) => {
+    // Fetch fresh user profile in real-time without reloading
+    try {
+      const freshUser = await fetchMeFromBackend();
+      if (freshUser) {
+        const normalized = {
+          ...freshUser,
+          id: freshUser.employee_id || freshUser.id,
+          employee_id: freshUser.employee_id || freshUser.id,
+          must: freshUser.must_change_password,
+        };
+        setMe(normalized);
+      }
+    } catch (err) {
+      if (err.message?.includes("401") || err.message?.includes("deactivated")) {
+        setMe(null);
+        return;
+      }
+    }
+
     // Fetch employees (Admin only)
     try {
       const backendEmployees =
@@ -256,8 +277,11 @@ export function AppProvider({ children }) {
               name: emp.name,
               email: emp.email,
               dept: emp.department || "",
+              department: emp.department || "",
               role: emp.role,
               active: emp.active,
+              manager_id: emp.manager_id,
+              manager_name: emp.manager_name,
               pw: existingUser?.pw || "",
             };
           }),
@@ -265,6 +289,26 @@ export function AppProvider({ children }) {
       }
     } catch (err) {
       console.warn("Employee sync skipped:", err);
+    }
+
+    // Fetch categories with department mapping
+    try {
+      const cats = await fetchCategoriesFromBackend();
+      if (Array.isArray(cats) && cats.length > 0) {
+        setCategoryList(cats);
+      }
+    } catch (err) {
+      console.warn("Category sync skipped:", err);
+    }
+
+    // Fetch departments directly from database
+    try {
+      const depts = await fetchDepartmentsFromBackend();
+      if (Array.isArray(depts) && depts.length > 0) {
+        setDepartments(depts.map((d) => (typeof d === "string" ? d : d.name)).filter(Boolean));
+      }
+    } catch (err) {
+      console.warn("Department sync skipped:", err);
     }
 
     // Fetch tickets for the logged-in user
@@ -285,6 +329,9 @@ export function AppProvider({ children }) {
           by: bt.created_by,
           byName: bt.created_by_name || "",
           byEmail: bt.created_by_email || "",
+          byDept: bt.byDept || bt.creator_dept || bt.department || "",
+          creator_dept: bt.creator_dept || bt.byDept || bt.department || "",
+          department: bt.department || bt.creator_dept || bt.byDept || "",
           approverName: bt.approver_name || "",
           assigneeName: bt.assignee_name || "",
           ticketDate: bt.ticket_date || "",
@@ -297,8 +344,13 @@ export function AppProvider({ children }) {
             hour12: false,
           }),
           approver: bt.approver_id,
+          approver_id: bt.approver_id,
+          approver_name: bt.approver_name || "",
           reason: bt.approver_reason || "",
+          approver_reason: bt.approver_reason || "",
           assignee: bt.assignee_id,
+          assignee_id: bt.assignee_id,
+          assignee_name: bt.assignee_name || "",
           resolution: bt.resolution || "",
           comments: Array.isArray(bt.comments) ? bt.comments : [],
           history: Array.isArray(bt.history) ? bt.history : [],
@@ -332,8 +384,13 @@ export function AppProvider({ children }) {
                 createdAt: bt.created_at,
                 created: new Date(bt.created_at).toLocaleString("en-IN"),
                 approver: bt.approver_id,
+                approver_id: bt.approver_id,
+                approver_name: bt.approver_name || "",
                 reason: bt.approver_reason || "",
+                approver_reason: bt.approver_reason || "",
                 assignee: bt.assignee_id,
+                assignee_id: bt.assignee_id,
+                assignee_name: bt.assignee_name || "",
                 resolution: bt.resolution || "",
                 comments: Array.isArray(bt.comments) ? bt.comments : [],
                 history: Array.isArray(bt.history) ? bt.history : [],
@@ -365,8 +422,13 @@ export function AppProvider({ children }) {
                 createdAt: bt.created_at,
                 created: new Date(bt.created_at).toLocaleString("en-IN"),
                 approver: bt.approver_id,
+                approver_id: bt.approver_id,
+                approver_name: bt.approver_name || "",
                 reason: bt.approver_reason || "",
+                approver_reason: bt.approver_reason || "",
                 assignee: bt.assignee_id,
+                assignee_id: bt.assignee_id,
+                assignee_name: bt.assignee_name || "",
                 resolution: bt.resolution || "",
                 comments: Array.isArray(bt.comments) ? bt.comments : [],
                 history: Array.isArray(bt.history) ? bt.history : [],
@@ -418,15 +480,14 @@ export function AppProvider({ children }) {
       const result = await loginToBackend(email, password);
 
       const user = result.data.user;
-      const token = result.data.token;
-
-      localStorage.setItem("tms_token", token);
 
       const normalizedUser = {
         ...user,
         id: user.employee_id,
         employee_id: user.employee_id,
         must: user.must_change_password,
+        manager_id: user.manager_id,
+        manager_name: user.manager_name,
       };
 
       setMe(normalizedUser);
@@ -455,8 +516,8 @@ export function AppProvider({ children }) {
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem("tms_token");
+  const logout = async () => {
+    await logoutFromBackend().catch(() => {});
     setMe(null);
     setSel(null);
     setForgot(false);
@@ -597,7 +658,7 @@ export function AppProvider({ children }) {
     }
   };
 
-  const addUser = async ({ name, email, dept, role, pw }) => {
+  const addUser = async ({ name, email, dept, role, pw, manager_id }) => {
     const trimmedEmail = email.trim().toLowerCase();
 
     const pwError = getPasswordError(pw);
@@ -618,6 +679,7 @@ export function AppProvider({ children }) {
         department: dept ? dept.trim() : "",
         password: pw,
         role,
+        manager_id,
       });
 
       const employee = result.data;
@@ -628,8 +690,11 @@ export function AppProvider({ children }) {
         name: employee.name,
         email: employee.email,
         dept: employee.department || "",
+        department: employee.department || "",
         role: employee.role,
         active: employee.active,
+        manager_id: employee.manager_id,
+        manager_name: employee.manager_name,
       };
 
       setUsers((prev) => [...prev, newUser]);
@@ -738,6 +803,7 @@ export function AppProvider({ children }) {
         email: data.email,
         department: data.department || data.dept,
         role: data.role,
+        manager_id: data.manager_id,
       });
 
       const updated = res.data || res;
@@ -750,11 +816,28 @@ export function AppProvider({ children }) {
                 name: updated.name || data.name,
                 email: updated.email || data.email,
                 dept: updated.department || data.department || data.dept,
+                department: updated.department || data.department || data.dept,
                 role: updated.role || data.role,
+                manager_id: updated.manager_id !== undefined ? updated.manager_id : data.manager_id,
+                manager_name: updated.manager_name,
               }
             : u,
         ),
       );
+
+      // If updating the currently logged-in user, also update me state
+      if (Number(id) === Number(me?.id || me?.employee_id)) {
+        setMe((prev) => ({
+          ...prev,
+          name: updated.name || data.name,
+          email: updated.email || data.email,
+          dept: updated.department || data.department || data.dept,
+          department: updated.department || data.department || data.dept,
+          role: updated.role || data.role,
+          manager_id: updated.manager_id !== undefined ? updated.manager_id : data.manager_id,
+          manager_name: updated.manager_name !== undefined ? updated.manager_name : prev?.manager_name,
+        }));
+      }
 
       showToast(`"${updated.name || data.name}" details updated successfully.`);
       return true;
@@ -765,15 +848,23 @@ export function AppProvider({ children }) {
     }
   };
 
-  const updateDraft = (key, value) => {
+  const updateDraft = (keyOrObj, value) => {
     setDraft((prev) => {
-      const next = { ...prev, [key]: value };
-      if (key === "cat") {
-        next.sub = "";
-        next.item = "";
+      if (typeof keyOrObj === "object" && keyOrObj !== null) {
+        return { ...prev, ...keyOrObj };
       }
-      if (key === "sub") {
+      const next = { ...prev, [keyOrObj]: value };
+      if (keyOrObj === "cat") {
+        next.catId = undefined;
+        next.sub = "";
+        next.subId = undefined;
         next.item = "";
+        next.itemId = undefined;
+      }
+      if (keyOrObj === "sub") {
+        next.subId = undefined;
+        next.item = "";
+        next.itemId = undefined;
       }
       return next;
     });
@@ -825,8 +916,9 @@ export function AppProvider({ children }) {
       createdAt: new Date().toISOString(),
       ticketDate: ticketDate,
       ticket_date: ticketDate,
-      approver: null,
-      approver_id: null,
+      approver: isDirectToSupport ? null : (me.manager_id || null),
+      approver_id: isDirectToSupport ? null : (me.manager_id || null),
+      approver_name: isDirectToSupport ? null : (me.manager_name || null),
       reason: "",
       approver_reason: "",
       assignee: null,
@@ -867,30 +959,79 @@ export function AppProvider({ children }) {
       ]);
 
       if (isDirectToSupport) {
-        // Ticket goes directly to Support Team pool
-        setPoolTickets((prev) => [finalizedTicket, ...prev]);
-        users
-          .filter(
-            (u) =>
-              u.role === "Support Team" &&
-              u.active &&
-              Number(u.id) !== Number(creatorId),
-          )
-          .forEach((st) =>
-            mail(st.id, `${finalizedTicket.id} added to support pool`),
-          );
+        // Resolve target categories & mapped departments for correct support team routing
+        const selectedCat = (draft.cat || "").trim().toLowerCase();
+        let targetCats = categoryList;
+        if (!targetCats || targetCats.length === 0) {
+          try {
+            targetCats = await fetchCategoriesFromBackend();
+          } catch (_) {
+            targetCats = [];
+          }
+        }
+
+        const matchedCategory = targetCats.find(
+          (c) =>
+            (c.name || "").trim().toLowerCase() === selectedCat ||
+            String(c.category_id) === String(draft.catId || draft.cat)
+        );
+        const mappedDepts = Array.isArray(matchedCategory?.departments)
+          ? matchedCategory.departments.map((d) => (d || "").trim().toLowerCase()).filter(Boolean)
+          : [];
+
+        // Filter active Support Team members whose department matches the category
+        const targetSupportUsers = users.filter((u) => {
+          if (u.role !== "Support Team" || !u.active || Number(u.id) === Number(creatorId)) return false;
+          if (!selectedCat || selectedCat === "others" || mappedDepts.length === 0) return true;
+          const userDept = (u.department || u.dept || "").trim().toLowerCase();
+          return mappedDepts.includes(userDept);
+        });
+
+        const recipients = targetSupportUsers.length > 0
+          ? targetSupportUsers
+          : users.filter(
+              (u) =>
+                u.role === "Support Team" &&
+                u.active &&
+                Number(u.id) !== Number(creatorId)
+            );
+
+        // Add to local pool only if the current user is a support team member matching the category department
+        if (me?.role === "Support Team") {
+          const myDept = (me.department || me.dept || "").trim().toLowerCase();
+          const matchesMyDept =
+            !selectedCat ||
+            selectedCat === "others" ||
+            mappedDepts.length === 0 ||
+            mappedDepts.includes(myDept);
+          if (matchesMyDept) {
+            setPoolTickets((prev) => [finalizedTicket, ...prev]);
+          }
+        }
+
+        recipients.forEach((st) =>
+          mail(st.id, `${finalizedTicket.id} added to support pool`),
+        );
       } else {
-        // Send notifications to approvers
-        users
-          .filter(
-            (u) =>
-              u.role === "Approver" &&
-              u.active &&
-              Number(u.id) !== Number(creatorId),
-          )
-          .forEach((a) =>
-            mail(a.id, `${finalizedTicket.id} needs your approval`),
-          );
+        // Send notifications specifically to the employee's assigned manager / approver
+        const assignedApproverId = me.manager_id;
+        const targetApprovers = assignedApproverId
+          ? users.filter(
+              (u) =>
+                (Number(u.id) === Number(assignedApproverId) ||
+                  Number(u.employee_id) === Number(assignedApproverId)) &&
+                u.active,
+            )
+          : users.filter(
+              (u) =>
+                u.role === "Approver" &&
+                u.active &&
+                Number(u.id) !== Number(creatorId),
+            );
+
+        targetApprovers.forEach((a) =>
+          mail(a.id, `${finalizedTicket.id} needs your approval`),
+        );
       }
 
       setDraft({
@@ -1000,6 +1141,7 @@ export function AppProvider({ children }) {
       try {
         await deleteTicketInBackend(id);
         setTickets((prev) => prev.filter((t) => t.id !== id));
+        setPoolTickets((prev) => prev.filter((t) => t.id !== id));
         setNotifs((prev) => prev.filter((n) => n.tid !== id));
         setSel(null);
         showToast(`${id} deleted.`);
@@ -1036,7 +1178,7 @@ export function AppProvider({ children }) {
     try {
       let backendTicket = null;
       if (ok) {
-        backendTicket = await approveTicketInBackend(id);
+        backendTicket = await approveTicketInBackend(id, reason.trim());
       } else {
         backendTicket = await rejectTicketInBackend(id, reason.trim());
       }
@@ -1046,8 +1188,8 @@ export function AppProvider({ children }) {
         approver: currentUserId,
         approver_id: currentUserId,
         approverName: me.name,
-        reason: ok ? "" : reason.trim(),
-        approver_reason: ok ? "" : reason.trim(),
+        reason: reason.trim(),
+        approver_reason: reason.trim(),
         clarification: ok ? "" : targetTicket.clarification,
         status: newStatus,
         history: backendTicket?.history || [
@@ -1134,6 +1276,7 @@ export function AppProvider({ children }) {
       );
 
       showToast("Clarification requested from submitter.");
+      await syncWithBackend(me);
       return true;
     } catch (error) {
       console.warn("Request clarification error:", error);
@@ -1201,6 +1344,7 @@ export function AppProvider({ children }) {
         showToast("Response submitted. Returned to Approver for review.");
       }
 
+      await syncWithBackend(me);
       return true;
     } catch (error) {
       console.warn("Submit clarification response error:", error);
@@ -1416,6 +1560,18 @@ export function AppProvider({ children }) {
     }
   };
 
+  const refreshDepartments = async () => {
+    try {
+      const depts = await fetchDepartmentsFromBackend();
+      if (Array.isArray(depts)) {
+        const names = depts.map((d) => (typeof d === "string" ? d : d.name)).filter(Boolean);
+        setDepartments(names);
+        return names;
+      }
+    } catch (_) {}
+    return [];
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -1426,6 +1582,9 @@ export function AppProvider({ children }) {
         emails,
         notifs,
         resets,
+        categoryList,
+        departments,
+        refreshDepartments,
         me,
         view,
         sel,

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useApp } from "@/context/AppContext";
 import { ROLES } from "@/lib/constants";
 import { EyeIcon, EyeOffIcon, SearchIcon, EditIcon } from "@/components/Icons";
@@ -23,6 +23,7 @@ export default function EmployeesView() {
     toggleUser,
     getUser,
     showToast,
+    departments: appDepartments,
   } = useApp();
 
   // Create Employee Modal State
@@ -31,10 +32,11 @@ export default function EmployeesView() {
   const [email, setEmail] = useState("");
   const [dept, setDept] = useState("");
   const [role, setRole] = useState("Employee");
+  const [managerId, setManagerId] = useState("");
   const [pw, setPw] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [createSubmitting, setCreateSubmitting] = useState(false);
-  const [createErrors, setCreateErrors] = useState({ name: "", email: "", dept: "", pw: "" });
+  const [createErrors, setCreateErrors] = useState({ name: "", email: "", dept: "", manager: "", pw: "" });
 
   // Edit Employee Modal State
   const [editEmployee, setEditEmployee] = useState(null);
@@ -42,8 +44,9 @@ export default function EmployeesView() {
   const [editEmail, setEditEmail] = useState("");
   const [editDept, setEditDept] = useState("");
   const [editRole, setEditRole] = useState("Employee");
+  const [editManagerId, setEditManagerId] = useState("");
   const [editSubmitting, setEditSubmitting] = useState(false);
-  const [editErrors, setEditErrors] = useState({ name: "", email: "", dept: "" });
+  const [editErrors, setEditErrors] = useState({ name: "", email: "", dept: "", manager: "" });
 
   // Table filter & pagination state
   const [searchTerm, setSearchTerm] = useState("");
@@ -52,13 +55,39 @@ export default function EmployeesView() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  const departmentsList = [
-    "Engineering",
-    "Finance",
-    "IT Infrastructure",
-    "IT Operations",
-    "HR",
-  ];
+  const departmentsList = useMemo(() => {
+    const fromApp = (appDepartments || []).map((d) => (typeof d === "string" ? d : d.name)).filter(Boolean);
+    const fromUsers = (users || []).map((u) => u.dept || u.department).filter(Boolean);
+    const combined = Array.from(new Set([...fromApp, ...fromUsers]));
+    if (combined.length === 0) {
+      return ["Engineering", "Finance", "HR", "IT Infrastructure", "IT Operations"];
+    }
+    return combined.sort((a, b) => a.localeCompare(b));
+  }, [appDepartments, users]);
+
+  const approversList = useMemo(() => {
+    return (users || []).filter((u) => u.role === "Approver" && u.active !== false && u.active !== 0);
+  }, [users]);
+
+  // Managers filtered by selected department in Create form
+  const createDeptManagers = useMemo(() => {
+    if (!dept) return [];
+    const normalizedDept = dept.trim().toLowerCase();
+    return approversList.filter(
+      (m) => (m.dept || m.department || "").trim().toLowerCase() === normalizedDept
+    );
+  }, [approversList, dept]);
+
+  // Managers filtered by selected department in Edit form
+  const editDeptManagers = useMemo(() => {
+    if (!editDept) return [];
+    const normalizedDept = editDept.trim().toLowerCase();
+    return approversList
+      .filter((m) => String(m.id || m.employee_id) !== String(editEmployee?.id || editEmployee?.employee_id))
+      .filter(
+        (m) => (m.dept || m.department || "").trim().toLowerCase() === normalizedDept
+      );
+  }, [approversList, editDept, editEmployee]);
 
   // Helper for 2-letter initials
   const getInitials = (n) => {
@@ -88,9 +117,10 @@ export default function EmployeesView() {
     setEditEmployee(emp);
     setEditName(emp.name || "");
     setEditEmail(emp.email || "");
-    setEditDept(emp.dept || "");
+    setEditDept(emp.dept || emp.department || "");
     setEditRole(emp.role || "Employee");
-    setEditErrors({ name: "", email: "", dept: "" });
+    setEditManagerId(emp.role === "Employee" && emp.manager_id ? String(emp.manager_id) : "");
+    setEditErrors({ name: "", email: "", dept: "", manager: "" });
   };
 
   const resetCreateForm = () => {
@@ -98,9 +128,10 @@ export default function EmployeesView() {
     setEmail("");
     setDept("");
     setRole("Employee");
+    setManagerId("");
     setPw("");
     setShowPw(false);
-    setCreateErrors({ name: "", email: "", dept: "", pw: "" });
+    setCreateErrors({ name: "", email: "", dept: "", manager: "", pw: "" });
   };
 
   const closeCreateModal = () => {
@@ -115,12 +146,13 @@ export default function EmployeesView() {
     setEditEmail("");
     setEditDept("");
     setEditRole("Employee");
+    setEditManagerId("");
     setEditSubmitting(false);
-    setEditErrors({ name: "", email: "", dept: "" });
+    setEditErrors({ name: "", email: "", dept: "", manager: "" });
   };
 
   const validateEdit = () => {
-    const errs = { name: "", email: "", dept: "" };
+    const errs = { name: "", email: "", dept: "", manager: "" };
     let isValid = true;
     const trimmedName = editName.trim();
     const trimmedEmail = editEmail.trim().toLowerCase();
@@ -158,6 +190,16 @@ export default function EmployeesView() {
       isValid = false;
     }
 
+    if (editRole === "Employee") {
+      if (!editManagerId) {
+        errs.manager = "Reporting manager / approver is required for employees";
+        isValid = false;
+      } else if (!editDeptManagers.some((m) => String(m.id || m.employee_id) === String(editManagerId))) {
+        errs.manager = "Selected manager must belong to the chosen department";
+        isValid = false;
+      }
+    }
+
     setEditErrors(errs);
     return isValid;
   };
@@ -175,6 +217,7 @@ export default function EmployeesView() {
       dept: editDept,
       department: editDept,
       role: editRole,
+      manager_id: editRole === "Employee" && editManagerId ? Number(editManagerId) : null,
     });
     setEditSubmitting(false);
 
@@ -184,7 +227,7 @@ export default function EmployeesView() {
   };
 
   const validateCreate = () => {
-    const errs = { name: "", email: "", dept: "", pw: "" };
+    const errs = { name: "", email: "", dept: "", manager: "", pw: "" };
     let isValid = true;
     const trimmedName = name.trim();
     const trimmedEmail = email.trim().toLowerCase();
@@ -214,6 +257,16 @@ export default function EmployeesView() {
       isValid = false;
     }
 
+    if (role === "Employee") {
+      if (!managerId) {
+        errs.manager = "Reporting manager / approver is required for employees";
+        isValid = false;
+      } else if (!createDeptManagers.some((m) => String(m.id || m.employee_id) === String(managerId))) {
+        errs.manager = "Selected manager must belong to the chosen department";
+        isValid = false;
+      }
+    }
+
     if (pw) {
       const strengthError = getPasswordError(pw);
       if (strengthError) {
@@ -237,18 +290,15 @@ export default function EmployeesView() {
       name: name.trim(),
       email: email.trim(),
       dept,
+      department: dept,
       role,
+      manager_id: role === "Employee" && managerId ? Number(managerId) : null,
       pw: finalPw,
     });
     setCreateSubmitting(false);
 
     if (success) {
-      setName("");
-      setEmail("");
-      setDept("");
-      setRole("Employee");
-      setPw("");
-      setCreateErrors({ name: "", email: "", dept: "", pw: "" });
+      resetCreateForm();
       setShowCreateModal(false);
     }
   };
@@ -561,10 +611,10 @@ export default function EmployeesView() {
                     className="border-b bg-black/[0.02] dark:bg-white/[0.02]"
                     style={{ borderColor: "var(--bd)" }}
                   >
-                    <th className="w-[22%] py-2.5 pl-3 pr-1 text-left text-xs font-bold uppercase tracking-wider text-black dark:text-white whitespace-nowrap">
+                    <th className="w-[20%] py-2.5 pl-3 pr-1 text-left text-xs font-bold uppercase tracking-wider text-black dark:text-white whitespace-nowrap">
                       EMPLOYEE
                     </th>
-                    <th className="w-[5%] py-2.5 px-0.5 text-left text-xs font-bold uppercase tracking-wider text-black dark:text-white whitespace-nowrap">
+                    <th className="w-[4%] py-2.5 px-0.5 text-left text-xs font-bold uppercase tracking-wider text-black dark:text-white whitespace-nowrap">
                       ID
                     </th>
                     <th className="w-[13%] py-2.5 px-1 text-left text-xs font-bold uppercase tracking-wider text-black dark:text-white whitespace-nowrap">
@@ -573,13 +623,16 @@ export default function EmployeesView() {
                     <th className="w-[11%] py-2.5 px-1 text-left text-xs font-bold uppercase tracking-wider text-black dark:text-white whitespace-nowrap">
                       ROLE
                     </th>
-                    <th className="w-[8%] py-2.5 px-3 text-center text-xs font-bold uppercase tracking-wider text-black dark:text-white whitespace-nowrap">
+                    <th className="w-[12%] py-2.5 px-1 text-left text-xs font-bold uppercase tracking-wider text-black dark:text-white whitespace-nowrap">
+                      MANAGER
+                    </th>
+                    <th className="w-[6%] py-2.5 px-1 text-center text-xs font-bold uppercase tracking-wider text-black dark:text-white whitespace-nowrap">
                       TICKETS
                     </th>
-                    <th className="w-[10%] py-2.5 px-3 text-left text-xs font-bold uppercase tracking-wider text-black dark:text-white whitespace-nowrap">
+                    <th className="w-[9%] py-2.5 px-2 text-left text-xs font-bold uppercase tracking-wider text-black dark:text-white whitespace-nowrap">
                       STATUS
                     </th>
-                    <th className="w-[29%] py-2.5  px-3 text-center text-xs font-bold uppercase tracking-wider text-black dark:text-white whitespace-nowrap">
+                    <th className="w-[25%] py-2.5 px-3 text-center text-xs font-bold uppercase tracking-wider text-black dark:text-white whitespace-nowrap">
                       ACTIONS
                     </th>
                   </tr>
@@ -588,7 +641,7 @@ export default function EmployeesView() {
                   {filteredUsers.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={7}
+                        colSpan={8}
                         className="py-12 text-center"
                         style={{ color: "var(--mu)" }}
                       >
@@ -653,6 +706,11 @@ export default function EmployeesView() {
                           {/* ROLE column */}
                           <td className="py-2 px-1 text-sm font-normal truncate text-black dark:text-gray-200">
                             {u.role}
+                          </td>
+
+                          {/* MANAGER column */}
+                          <td className="py-2 px-1 text-sm font-normal truncate text-black dark:text-gray-200">
+                            {u.manager_name || (users.find((m) => String(m.id || m.employee_id) === String(u.manager_id))?.name) || "—"}
                           </td>
 
                           {/* TICKETS column */}
@@ -911,8 +969,10 @@ export default function EmployeesView() {
                   <select
                     value={dept}
                     onChange={(e) => {
-                      setDept(e.target.value);
-                      if (createErrors.dept) setCreateErrors((p) => ({ ...p, dept: "" }));
+                      const newDept = e.target.value;
+                      setDept(newDept);
+                      setManagerId("");
+                      setCreateErrors((p) => ({ ...p, dept: "", manager: "" }));
                     }}
                     className="w-full px-3.5 py-2.5 rounded-lg text-sm font-normal text-black dark:text-gray-100 border focus:outline-hidden cursor-pointer transition-colors"
                     style={{
@@ -940,7 +1000,14 @@ export default function EmployeesView() {
                   </label>
                   <select
                     value={role}
-                    onChange={(e) => setRole(e.target.value)}
+                    onChange={(e) => {
+                      const newRole = e.target.value;
+                      setRole(newRole);
+                      if (newRole !== "Employee") {
+                        setManagerId("");
+                        setCreateErrors((p) => ({ ...p, manager: "" }));
+                      }
+                    }}
                     className="w-full px-3.5 py-2.5 rounded-lg text-sm font-normal text-black dark:text-gray-100 border focus:outline-hidden cursor-pointer"
                     style={{
                       backgroundColor: "var(--sf)",
@@ -955,6 +1022,47 @@ export default function EmployeesView() {
                   </select>
                 </div>
               </div>
+
+              {role === "Employee" && (
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-black dark:text-white mb-1.5">
+                    Reporting Manager / Approver <span style={{ color: "var(--wr)" }}>*</span>
+                  </label>
+                  <select
+                    value={managerId}
+                    disabled={!dept}
+                    onChange={(e) => {
+                      setManagerId(e.target.value);
+                      if (createErrors.manager) setCreateErrors((p) => ({ ...p, manager: "" }));
+                    }}
+                    className="w-full px-3.5 py-2.5 rounded-lg text-sm font-normal text-black dark:text-gray-100 border focus:outline-hidden transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                    style={{
+                      backgroundColor: "var(--sf)",
+                      borderColor: "var(--bd)",
+                    }}
+                  >
+                    {!dept ? (
+                      <option value="">Select department first</option>
+                    ) : createDeptManagers.length === 0 ? (
+                      <option value="">No managers available in {dept}</option>
+                    ) : (
+                      <>
+                        <option value="">Select reporting manager</option>
+                        {createDeptManagers.map((m) => (
+                          <option key={m.id || m.employee_id} value={m.employee_id || m.id}>
+                            {m.name} ({m.display_id || `EMP-${String(m.employee_id || m.id).padStart(3, "0")}`}) - {m.dept || m.department}
+                          </option>
+                        ))}
+                      </>
+                    )}
+                  </select>
+                  {createErrors.manager && (
+                    <p className="text-xs mt-1.5 font-medium" style={{ color: "var(--rd)" }}>
+                      {createErrors.manager}
+                    </p>
+                  )}
+                </div>
+              )}
 
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-black dark:text-white mb-1.5">
@@ -1106,8 +1214,16 @@ export default function EmployeesView() {
                     <select
                       value={editDept}
                       onChange={(e) => {
-                        setEditDept(e.target.value);
-                        if (editErrors.dept) setEditErrors((p) => ({ ...p, dept: "" }));
+                        const newDept = e.target.value;
+                        setEditDept(newDept);
+                        const normalized = newDept.trim().toLowerCase();
+                        const currentMgr = approversList.find(
+                          (m) => String(m.id || m.employee_id) === String(editManagerId)
+                        );
+                        if (!currentMgr || (currentMgr.dept || currentMgr.department || "").trim().toLowerCase() !== normalized) {
+                          setEditManagerId("");
+                        }
+                        setEditErrors((p) => ({ ...p, dept: "", manager: "" }));
                       }}
                       className="w-full px-3.5 py-2.5 rounded-lg text-sm font-normal text-black dark:text-gray-100 border focus:outline-hidden cursor-pointer transition-colors"
                       style={{
@@ -1135,7 +1251,14 @@ export default function EmployeesView() {
                     </label>
                     <select
                       value={editRole}
-                      onChange={(e) => setEditRole(e.target.value)}
+                      onChange={(e) => {
+                        const newRole = e.target.value;
+                        setEditRole(newRole);
+                        if (newRole !== "Employee") {
+                          setEditManagerId("");
+                          setEditErrors((p) => ({ ...p, manager: "" }));
+                        }
+                      }}
                       disabled={editEmployee.id === me?.id}
                       className="w-full px-3.5 py-2.5 rounded-lg text-sm font-normal text-black dark:text-gray-100 border focus:outline-hidden cursor-pointer disabled:opacity-50"
                       style={{
@@ -1151,6 +1274,47 @@ export default function EmployeesView() {
                     </select>
                   </div>
                 </div>
+
+                {editRole === "Employee" && (
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-black dark:text-white mb-1.5">
+                      Reporting Manager / Approver <span style={{ color: "var(--wr)" }}>*</span>
+                    </label>
+                    <select
+                      value={editManagerId}
+                      disabled={!editDept}
+                      onChange={(e) => {
+                        setEditManagerId(e.target.value);
+                        if (editErrors.manager) setEditErrors((p) => ({ ...p, manager: "" }));
+                      }}
+                      className="w-full px-3.5 py-2.5 rounded-lg text-sm font-normal text-black dark:text-gray-100 border focus:outline-hidden transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                      style={{
+                        backgroundColor: "var(--sf)",
+                        borderColor: "var(--bd)",
+                      }}
+                    >
+                      {!editDept ? (
+                        <option value="">Select department first</option>
+                      ) : editDeptManagers.length === 0 ? (
+                        <option value="">No managers available in {editDept}</option>
+                      ) : (
+                        <>
+                          <option value="">Select reporting manager</option>
+                          {editDeptManagers.map((m) => (
+                            <option key={m.id || m.employee_id} value={m.employee_id || m.id}>
+                              {m.name} ({m.display_id || `EMP-${String(m.employee_id || m.id).padStart(3, "0")}`}) - {m.dept || m.department}
+                            </option>
+                          ))}
+                        </>
+                      )}
+                    </select>
+                    {editErrors.manager && (
+                      <p className="text-xs mt-1.5 font-medium" style={{ color: "var(--rd)" }}>
+                        {editErrors.manager}
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 <div className="flex items-center justify-end gap-3 pt-3">
                   <button

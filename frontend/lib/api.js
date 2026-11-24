@@ -4,6 +4,7 @@ export const ASSET_BASE = API_BASE.replace(/\/api$/, "");
 export async function loginToBackend(email, password) {
   const res = await fetch(`${API_BASE}/auth/login`, {
     method: "POST",
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
     },
@@ -20,12 +21,40 @@ export async function loginToBackend(email, password) {
   return result;
 }
 
-export async function fetchTicketById(id) {
-  const token = localStorage.getItem("tms_token");
-  const res = await fetch(`${API_BASE}/tickets/${id}`, {
+export async function fetchMeFromBackend() {
+  const res = await fetch(`${API_BASE}/auth/me`, {
+    method: "GET",
+    credentials: "include",
     headers: {
-      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
     },
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || `HTTP error ${res.status}`);
+  }
+
+  const result = await res.json();
+  return result.data;
+}
+
+export async function logoutFromBackend() {
+  try {
+    const res = await fetch(`${API_BASE}/auth/logout`, {
+      method: "POST",
+      credentials: "include",
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+export async function fetchTicketById(id) {
+  const res = await fetch(`${API_BASE}/tickets/${id}`, {
+    method: "GET",
+    credentials: "include",
   });
 
   if (!res.ok) {
@@ -39,7 +68,10 @@ export async function fetchTicketById(id) {
 
 export async function checkBackendHealth() {
   try {
-    const res = await fetch(`${API_BASE}/health`, { method: "GET" });
+    const res = await fetch(`${API_BASE}/health`, {
+      method: "GET",
+      credentials: "include",
+    });
     return res.ok;
   } catch {
     return false;
@@ -48,16 +80,13 @@ export async function checkBackendHealth() {
 
 // ---------------- Employees ----------------
 
-
 export async function fetchEmployeesFromBackend() {
   try {
-    const token = localStorage.getItem("tms_token");
-
     const res = await fetch(`${API_BASE}/employees`, {
       method: "GET",
+      credentials: "include",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
       },
     });
 
@@ -74,15 +103,12 @@ export async function fetchEmployeesFromBackend() {
   }
 }
 
-
 export async function createEmployeeInBackend(employee) {
-  const token = localStorage.getItem("tms_token");
-
   const res = await fetch(`${API_BASE}/employees`, {
     method: "POST",
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify(employee),
   });
@@ -96,15 +122,12 @@ export async function createEmployeeInBackend(employee) {
   return data;
 }
 
-
 export async function updateEmployeeInBackend(id, employeeData) {
-  const token = localStorage.getItem("tms_token");
-
   const res = await fetch(`${API_BASE}/employees/${id}`, {
     method: "PUT",
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify(employeeData),
   });
@@ -119,14 +142,12 @@ export async function updateEmployeeInBackend(id, employeeData) {
 }
 
 export async function setEmployeeActiveInBackend(id, active) {
-  const token = localStorage.getItem("tms_token");
-
   try {
     const res = await fetch(`${API_BASE}/employees/${id}/active`, {
       method: "PATCH",
+      credentials: "include",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({ active: Boolean(active) }),
     });
@@ -141,15 +162,10 @@ export async function setEmployeeActiveInBackend(id, active) {
   return updateEmployeeInBackend(id, { active: Boolean(active) });
 }
 
-
 export async function deleteEmployeeInBackend(id) {
-  const token = localStorage.getItem("tms_token");
-
   const res = await fetch(`${API_BASE}/employees/${id}`, {
     method: "DELETE",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+    credentials: "include",
   });
 
   const data = await res.json();
@@ -163,10 +179,8 @@ export async function deleteEmployeeInBackend(id) {
 
 // ---------------- Tickets ----------------
 
-
 export async function fetchTicketsFromBackend(params = {}) {
   try {
-    const token = localStorage.getItem("tms_token");
     const cleanParams = Object.fromEntries(
       Object.entries(params).filter(([_, v]) => v !== undefined && v !== null && v !== "")
     );
@@ -175,9 +189,9 @@ export async function fetchTicketsFromBackend(params = {}) {
 
     const res = await fetch(url, {
       method: "GET",
+      credentials: "include",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
       },
     });
 
@@ -199,13 +213,11 @@ export async function fetchTicketsFromBackend(params = {}) {
 
 export async function fetchTicketPoolFromBackend() {
   try {
-    const token = localStorage.getItem("tms_token");
-
     const res = await fetch(`${API_BASE}/tickets/pool`, {
       method: "GET",
+      credentials: "include",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
       },
     });
 
@@ -221,13 +233,11 @@ export async function fetchTicketPoolFromBackend() {
 
 export async function fetchAssignedTicketsFromBackend() {
   try {
-    const token = localStorage.getItem("tms_token");
-
     const res = await fetch(`${API_BASE}/tickets/assigned`, {
       method: "GET",
+      credentials: "include",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
       },
     });
 
@@ -241,10 +251,7 @@ export async function fetchAssignedTicketsFromBackend() {
   }
 }
 
-
 export async function createTicketInBackend(ticket, file = null) {
-  const token = localStorage.getItem("tms_token");
-
   const formData = new FormData();
   formData.append("ticket", JSON.stringify(ticket));
 
@@ -254,9 +261,7 @@ export async function createTicketInBackend(ticket, file = null) {
 
   const res = await fetch(`${API_BASE}/tickets`, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+    credentials: "include",
     body: formData,
   });
 
@@ -271,8 +276,6 @@ export async function createTicketInBackend(ticket, file = null) {
 
 export async function updateTicketInBackend(id, updates, file = null, removeAttachment = false) {
   try {
-    const token = localStorage.getItem("tms_token");
-
     let res;
     if (file || removeAttachment) {
       const formData = new FormData();
@@ -285,9 +288,7 @@ export async function updateTicketInBackend(id, updates, file = null, removeAtta
 
       res = await fetch(`${API_BASE}/tickets/${id}/details`, {
         method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        credentials: "include",
         body: formData,
       });
 
@@ -295,18 +296,16 @@ export async function updateTicketInBackend(id, updates, file = null, removeAtta
       if (!res.ok && res.status !== 400 && res.status !== 403) {
         res = await fetch(`${API_BASE}/tickets/${id}`, {
           method: "PUT",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          credentials: "include",
           body: formData,
         });
       }
     } else {
       res = await fetch(`${API_BASE}/tickets/${id}`, {
         method: "PUT",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(updates),
       });
@@ -325,15 +324,12 @@ export async function updateTicketInBackend(id, updates, file = null, removeAtta
   }
 }
 
-
 export async function resetEmployeePasswordInBackend(id, temporaryPassword) {
-  const token = localStorage.getItem("tms_token");
-
   const res = await fetch(`${API_BASE}/auth/reset-password/${id}`, {
     method: "PUT",
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({ temporaryPassword }),
   });
@@ -348,13 +344,9 @@ export async function resetEmployeePasswordInBackend(id, temporaryPassword) {
 }
 
 export async function deleteTicketInBackend(id) {
-  const token = localStorage.getItem("tms_token");
-
   const res = await fetch(`${API_BASE}/tickets/${id}`, {
     method: "DELETE",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+    credentials: "include",
   });
 
   let data = null;
@@ -375,12 +367,11 @@ export async function deleteTicketInBackend(id) {
 
 export async function sendEmailViaBackend({ to, subject, text, html }) {
   try {
-    const token = localStorage.getItem("tms_token");
     const res = await fetch(`${API_BASE}/emails/send`, {
       method: "POST",
+      credentials: "include",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({ to, subject, text, html })
     });
@@ -392,15 +383,12 @@ export async function sendEmailViaBackend({ to, subject, text, html }) {
   }
 }
 
-
 export async function changePasswordInBackend(newPassword) {
-  const token = localStorage.getItem("tms_token");
-
   const res = await fetch(`${API_BASE}/auth/change-password`, {
     method: "PUT",
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({ newPassword }),
   });
@@ -418,12 +406,11 @@ export async function changePasswordInBackend(newPassword) {
 
 export async function fetchDashboardSummary() {
   try {
-    const token = localStorage.getItem("tms_token");
     const res = await fetch(`${API_BASE}/dashboard/summary`, {
       method: "GET",
+      credentials: "include",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
       },
     });
 
@@ -439,12 +426,11 @@ export async function fetchDashboardSummary() {
 // ---------------- Workflow Actions ----------------
 
 async function postWorkflow(endpoint, body = {}) {
-  const token = localStorage.getItem("tms_token");
   const res = await fetch(`${API_BASE}/workflow/${endpoint}`, {
     method: "POST",
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify(body),
   });
@@ -456,8 +442,8 @@ async function postWorkflow(endpoint, body = {}) {
   return data.data || data;
 }
 
-export async function approveTicketInBackend(id) {
-  return postWorkflow(`${id}/approve`);
+export async function approveTicketInBackend(id, reason = "") {
+  return postWorkflow(`${id}/approve`, { reason });
 }
 
 export async function rejectTicketInBackend(id, reason) {
@@ -488,31 +474,29 @@ export async function resolveTicketInBackend(id, resolution) {
 
 export async function fetchNotificationsFromBackend() {
   try {
-    const token = localStorage.getItem("tms_token");
-    if (!token) return [];
     const res = await fetch(`${API_BASE}/notifications`, {
       method: "GET",
+      credentials: "include",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
       },
     });
     if (!res.ok) throw new Error(`HTTP error ${res.status}`);
-    const json = await res.json();
-    return json.data || [];
+    const data = await res.json();
+    return data.data || [];
   } catch (err) {
     console.warn("Error fetching notifications from backend:", err.message);
-    return null;
+    return [];
   }
 }
 
 export async function markNotificationAsReadInBackend(id) {
   try {
-    const token = localStorage.getItem("tms_token");
     const res = await fetch(`${API_BASE}/notifications/${id}/read`, {
       method: "PATCH",
+      credentials: "include",
       headers: {
-        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
       },
     });
     return res.ok;
@@ -523,11 +507,11 @@ export async function markNotificationAsReadInBackend(id) {
 
 export async function markAllNotificationsAsReadInBackend() {
   try {
-    const token = localStorage.getItem("tms_token");
     const res = await fetch(`${API_BASE}/notifications/read-all`, {
       method: "PATCH",
+      credentials: "include",
       headers: {
-        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
       },
     });
     return res.ok;
@@ -538,7 +522,7 @@ export async function markAllNotificationsAsReadInBackend() {
 
 export async function downloadAttachment(url, fileName) {
   try {
-    const res = await fetch(url);
+    const res = await fetch(url, { credentials: "include" });
     if (!res.ok) throw new Error(`HTTP error ${res.status}`);
     const blob = await res.blob();
     const blobUrl = window.URL.createObjectURL(blob);
@@ -566,4 +550,32 @@ export async function downloadAttachment(url, fileName) {
   }
 }
 
+export async function fetchCategoriesFromBackend() {
+  try {
+    const res = await fetch(`${API_BASE}/categories`, {
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data?.data) ? data.data : [];
+  } catch (err) {
+    console.error("Failed to fetch categories:", err);
+    return [];
+  }
+}
 
+export async function fetchDepartmentsFromBackend() {
+  try {
+    const res = await fetch(`${API_BASE}/departments`, {
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data?.data) ? data.data : [];
+  } catch (err) {
+    console.error("Failed to fetch departments:", err);
+    return [];
+  }
+}
