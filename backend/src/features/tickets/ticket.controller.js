@@ -32,7 +32,7 @@ export const getAllTickets = async (req, res, next) => {
 
 export const getTicketPool = async (req, res, next) => {
   try {
-    const tickets = await ticketService.getTicketPool();
+    const tickets = await ticketService.getTicketPool(req.user?.employeeId);
 
     res.status(200).json({
       success: true,

@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import pool from "../../config/db.js";
-import { notify, idsByRole } from "../../utils/notify.js";
+import { notify, idsByRole, supportIdsForCategory } from "../../utils/notify.js";
 
 const backendRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -27,19 +27,79 @@ export const getAllTickets = async (role, employeeId, options = {}) => {
     FROM tickets t
   `;
 
-  if (role === "Admin" || role === "Approver") {
+  if (role === "Admin") {
     query = `${baseSelect} ORDER BY t.created_at DESC`;
     countQuery = `${baseCount}`;
+  } else if (role === "Approver") {
+    query = `${baseSelect} WHERE (t.approver_id = $1 OR t.created_by = $1 OR e.manager_id = $1) ORDER BY t.created_at DESC`;
+    countQuery = `${baseCount} LEFT JOIN employees e ON t.created_by = e.employee_id WHERE (t.approver_id = $1 OR t.created_by = $1 OR e.manager_id = $1)`;
+    values = [employeeId];
+    countValues = [employeeId];
   } else if (role === "Employee") {
     query = `${baseSelect} WHERE t.created_by = $1 ORDER BY t.created_at DESC`;
     countQuery = `${baseCount} WHERE t.created_by = $1`;
     values = [employeeId];
     countValues = [employeeId];
   } else if (role === "Support Team") {
-    query = `${baseSelect} WHERE (t.assignee_id = $1 OR t.created_by = $1) ORDER BY t.created_at DESC`;
-    countQuery = `${baseCount} WHERE (t.assignee_id = $1 OR t.created_by = $1)`;
-    values = [employeeId];
-    countValues = [employeeId];
+    // Fetch support member's department
+    let supportDept = null;
+    try {
+      const empRes = await pool.query(`SELECT department FROM employees WHERE employee_id = $1`, [employeeId]);
+      supportDept = empRes.rows[0]?.department || null;
+    } catch (_) {}
+
+    // Support team members see:
+    // 1. Tickets assigned to them or created by them
+    // 2. Tickets that are not pending approval where:
+    //    - category is 'Others' (visible to all support engineers)
+    //    - OR category is mapped to the support engineer's department in category_department_mapping
+    query = `
+      ${baseSelect}
+      WHERE (
+        t.assignee_id = $1
+        OR t.created_by = $1
+        OR (
+          t.status != 'Pending Approval'
+          AND (
+            t.category = 'Others'
+            OR (
+              $2::varchar IS NOT NULL
+              AND t.category IN (
+                SELECT c.name
+                FROM category_department_mapping cdm
+                JOIN categories c ON c.category_id = cdm.category_id
+                WHERE LOWER(TRIM(cdm.department)) = LOWER(TRIM($2))
+              )
+            )
+          )
+        )
+      )
+      ORDER BY t.created_at DESC
+    `;
+    countQuery = `
+      ${baseCount}
+      WHERE (
+        t.assignee_id = $1
+        OR t.created_by = $1
+        OR (
+          t.status != 'Pending Approval'
+          AND (
+            t.category = 'Others'
+            OR (
+              $2::varchar IS NOT NULL
+              AND t.category IN (
+                SELECT c.name
+                FROM category_department_mapping cdm
+                JOIN categories c ON c.category_id = cdm.category_id
+                WHERE LOWER(TRIM(cdm.department)) = LOWER(TRIM($2))
+              )
+            )
+          )
+        )
+      )
+    `;
+    values = [employeeId, supportDept];
+    countValues = [employeeId, supportDept];
   } else {
     return [];
   }
@@ -70,16 +130,44 @@ export const getAllTickets = async (role, employeeId, options = {}) => {
   return result.rows;
 };
 
-export const getTicketPool = async () => {
-  const result = await pool.query(`
+export const getTicketPool = async (employeeId = null) => {
+  let supportDept = null;
+  if (employeeId) {
+    try {
+      const empRes = await pool.query(`SELECT department, role FROM employees WHERE employee_id = $1`, [employeeId]);
+      if (empRes.rows[0]?.role === "Support Team") {
+        supportDept = empRes.rows[0]?.department || null;
+      }
+    } catch (_) {}
+  }
+
+  let query = `
     SELECT t.*, e.department AS "byDept", e.department AS creator_dept
     FROM tickets t
     LEFT JOIN employees e ON t.created_by = e.employee_id
     WHERE t.status = 'Open'
     AND t.assignee_id IS NULL
-    ORDER BY t.created_at DESC
-  `);
+  `;
+  const values = [];
 
+  if (supportDept) {
+    query += `
+      AND (
+        t.category = 'Others'
+        OR t.category IN (
+          SELECT c.name
+          FROM category_department_mapping cdm
+          JOIN categories c ON c.category_id = cdm.category_id
+          WHERE LOWER(TRIM(cdm.department)) = LOWER(TRIM($1))
+        )
+      )
+    `;
+    values.push(supportDept);
+  }
+
+  query += ` ORDER BY t.created_at DESC`;
+
+  const result = await pool.query(query, values);
   return result.rows;
 };
 
@@ -184,8 +272,28 @@ export const createTicket = async (ticketData, file = null, user = null) => {
   }
 
   const rawApproverId = ticketData.approver_id || ticketData.approver;
-  const approverId = rawApproverId && !Number.isNaN(Number(rawApproverId)) ? Number(rawApproverId) : null;
+  let approverId = rawApproverId && !Number.isNaN(Number(rawApproverId)) ? Number(rawApproverId) : null;
+  let approverName = ticketData.approver_name || ticketData.approverName || null;
   const approverReason = ticketData.approver_reason || ticketData.reason || "";
+
+  // Always resolve the creator's current manager directly from the database for non-direct tickets
+  if (!isDirect && createdBy) {
+    try {
+      const mgrResult = await pool.query(
+        `SELECT e.manager_id, m.name AS manager_name
+         FROM employees e
+         LEFT JOIN employees m ON m.employee_id = e.manager_id
+         WHERE e.employee_id = $1`,
+        [createdBy]
+      );
+      if (mgrResult.rows.length > 0 && mgrResult.rows[0].manager_id) {
+        approverId = mgrResult.rows[0].manager_id;
+        approverName = mgrResult.rows[0].manager_name;
+      }
+    } catch (e) {
+      console.warn("Could not auto-fetch manager for ticket creator:", e);
+    }
+  }
 
   const rawAssigneeId = ticketData.assignee_id || ticketData.assignee;
   const assigneeId = rawAssigneeId && !Number.isNaN(Number(rawAssigneeId)) ? Number(rawAssigneeId) : null;
@@ -295,14 +403,14 @@ export const createTicket = async (ticketData, file = null, user = null) => {
     // Persist notification in DB for approvers or support team
     try {
       if (status === "Pending Approval") {
-        const approvers = await idsByRole("Approver");
-        await notify(approvers, {
+        const targetApprovers = approverId ? [Number(approverId)] : await idsByRole("Approver");
+        await notify(targetApprovers, {
           ticketId: id,
           title: `Approval pending · ${id}`,
           message: `${title} (${creatorName})`,
         });
       } else if (status === "Open") {
-        const supportTeam = await idsByRole("Support Team");
+        const supportTeam = await supportIdsForCategory(cat || createdTicket.category, createdBy);
         await notify(supportTeam, {
           ticketId: id,
           title: `New ticket in pool · ${id}`,
@@ -339,7 +447,20 @@ export const getTicketById = async (id) => {
     [id]
   );
 
-  return result.rows[0];
+  const ticket = result.rows[0];
+  if (!ticket) return null;
+
+  try {
+    const clarRes = await pool.query(
+      `SELECT * FROM ticket_clarifications WHERE ticket_id = $1 ORDER BY asked_at ASC`,
+      [id]
+    );
+    ticket.clarifications = clarRes.rows;
+  } catch (_) {
+    ticket.clarifications = [];
+  }
+
+  return ticket;
 };
 
 export const updateTicket = async (id, updates, file = null, removeAttachment = false) => {

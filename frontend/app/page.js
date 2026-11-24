@@ -12,6 +12,7 @@ import NewTicketView from "@/components/views/NewTicketView";
 import EmployeesView from "@/components/views/EmployeesView";
 import NotificationsView from "@/components/views/NotificationsView";
 import DashboardView from "@/components/views/DashboardView";
+import MasterDataView from "@/components/views/MasterDataView";
 
 export default function Home() {
   const { me, view, sel, forgot, mounted, tickets, poolTickets, assignedTickets } = useApp();
@@ -62,6 +63,8 @@ export default function Home() {
         return <NotificationsView />;
       case "users":
         return <EmployeesView />;
+      case "masterData":
+        return <MasterDataView />;
       case "new":
         return <NewTicketView />;
       case "tickets":
@@ -78,7 +81,13 @@ export default function Home() {
           <TicketListView
             title="Awaiting Approval"
             subtitle="Tickets waiting for manager / approver decision"
-            tickets={tickets.filter((t) => t.status === "Pending Approval")}
+            tickets={tickets.filter(
+              (t) =>
+                t.status === "Pending Approval" &&
+                (me.role === "Admin" ||
+                  Number(t.approver_id || t.approver) ===
+                    Number(me.employee_id || me.id))
+            )}
             emptyMessage="Nothing to review right now."
             hideStatusFilter={true}
             hideAssigneeFilter={true}
@@ -129,10 +138,10 @@ export default function Home() {
         className={`flex-1 min-w-0 flex flex-col overflow-x-hidden ${
           sel || view === "new"
             ? "lg:overflow-y-hidden overflow-y-auto p-3 sm:p-4 lg:p-4 h-full"
-            : "overflow-y-auto hidden-scroll p-3.5 sm:p-5 lg:p-6"
+            : "overflow-y-auto p-3.5 sm:p-5 lg:p-6"
         }`}
       >
-        <div className="w-full flex-1 flex flex-col min-h-0 h-full">
+        <div className="w-full flex-1 flex flex-col min-h-0">
           {renderActiveView()}
         </div>
       </main>

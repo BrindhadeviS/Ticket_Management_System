@@ -1,5 +1,5 @@
 import pool from "../../config/db.js";
-import { notify, idsByRole } from "../../utils/notify.js";
+import { notify, idsByRole, supportIdsForCategory } from "../../utils/notify.js";
 
 class WorkflowError extends Error {
   constructor(status, message) {
@@ -73,19 +73,25 @@ const applyUpdate = async (client, ticket, fields, entry) => {
 
 const clean = (text) => (typeof text === "string" ? text.trim() : "");
 
-export const approveTicket = async (id, user) => {
+export const approveTicket = async (id, user, reason = "") => {
+  const why = clean(reason);
   const { ticket, name } = await withTicket(id, async (c, tk) => {
     const currentStatus = (tk.status || "").trim();
     if (currentStatus === "Resolved" || currentStatus === "Rejected") {
       throw new WorkflowError(409, "This ticket is already closed.");
     }
 
+    if (user.role === "Approver" && tk.approver_id && Number(tk.approver_id) !== Number(user.employeeId)) {
+      throw new WorkflowError(403, "You are not authorized to approve this ticket. Only the assigned approver can approve it.");
+    }
+
     const name = await nameOf(c, user.employeeId);
+    const noteText = why ? `Approved by ${name}: ${why}` : `Approved by ${name}`;
     const ticket = await applyUpdate(
       c,
       tk,
-      { status: "Open", approver_id: user.employeeId, approver_name: name, approver_reason: "", clarification: "", assignee_id: null, assignee_name: null },
-      { by: user.employeeId, byName: name, from: tk.status, to: "Open", note: `Approved by ${name}`, t: stamp() },
+      { status: "Open", approver_id: user.employeeId, approver_name: name, approver_reason: why, clarification: "", assignee_id: null, assignee_name: null },
+      { by: user.employeeId, byName: name, from: tk.status, to: "Open", note: noteText, t: stamp() },
     );
     return { ticket, name };
   });
@@ -95,7 +101,7 @@ export const approveTicket = async (id, user) => {
     title: `Ticket approved · ${id}`,
     message: `Approved by ${name}. It is now in the ticket pool.`,
   });
-  await notify(await idsByRole("Support Team"), {
+  await notify(await supportIdsForCategory(ticket.category), {
     ticketId: id,
     title: `New ticket in pool · ${id}`,
     message: ticket.title,
@@ -121,6 +127,9 @@ export const rejectTicket = async (id, user, reason) => {
     if (isApprover && tk.status !== "Pending Approval" && !(tk.status === "Clarification Needed" && !tk.assignee_id))
       throw new WorkflowError(409, "This ticket is not awaiting approval.");
 
+    if (isApprover && tk.approver_id && Number(tk.approver_id) !== Number(user.employeeId) && !isAdmin)
+      throw new WorkflowError(403, "You are not authorized to reject this ticket. Only the designated approver can reject it.");
+
     if (isSupport && tk.status !== "Open" && tk.status !== "In Progress" && tk.status !== "Pending" && Number(tk.assignee_id) !== Number(user.employeeId) && !isAdmin)
       throw new WorkflowError(403, "Only the assigned engineer can reject this ticket.");
 
@@ -128,7 +137,13 @@ export const rejectTicket = async (id, user, reason) => {
       throw new WorkflowError(403, "You cannot reject your own ticket.");
 
     const name = await nameOf(c, user.employeeId);
-    const updates = { status: "Rejected", approver_reason: why };
+    const updates = { status: "Rejected" };
+    if (isSupport) {
+      updates.resolution = why;
+    } else {
+      updates.approver_reason = why;
+    }
+
     if (isApprover || !tk.approver_id) {
       updates.approver_id = user.employeeId;
       updates.approver_name = name;
@@ -166,6 +181,9 @@ export const requestClarification = async (id, user, text) => {
     if (isApprover && tk.status !== "Pending Approval" && !isAdmin)
       throw new WorkflowError(409, "You can only request clarification while awaiting approval.");
 
+    if (isApprover && tk.approver_id && Number(tk.approver_id) !== Number(user.employeeId) && !isAdmin)
+      throw new WorkflowError(403, "You are not authorized to request clarification on this ticket. Only the designated approver can do so.");
+
     if (isSupport && tk.status !== "In Progress" && tk.status !== "Pending" && !isAdmin)
       throw new WorkflowError(409, "You can only request clarification for tickets in progress.");
 
@@ -176,6 +194,18 @@ export const requestClarification = async (id, user, text) => {
       throw new WorkflowError(403, "You cannot request clarification on your own ticket.");
 
     const name = await nameOf(c, user.employeeId);
+
+    // Record question in ticket_clarifications table
+    try {
+      await c.query(
+        `INSERT INTO ticket_clarifications (ticket_id, question, asked_by, asked_by_name, asked_by_role)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [id, why, user.employeeId, name, user.role]
+      );
+    } catch (tblErr) {
+      console.warn("Could not insert into ticket_clarifications:", tblErr.message);
+    }
+
     const ticket = await applyUpdate(
       c,
       tk,
@@ -215,6 +245,30 @@ export const respondClarification = async (id, user, text) => {
     const nextStatus = isDirect ? "Open" : "Pending Approval";
     const name = await nameOf(c, user.employeeId);
 
+    // Update unanswered clarification in ticket_clarifications table
+    try {
+      const openClar = await c.query(
+        `SELECT id FROM ticket_clarifications WHERE ticket_id = $1 AND answer IS NULL ORDER BY asked_at DESC LIMIT 1`,
+        [id]
+      );
+      if (openClar.rows.length > 0) {
+        await c.query(
+          `UPDATE ticket_clarifications
+           SET answer = $1, answered_by = $2, answered_by_name = $3, answered_at = CURRENT_TIMESTAMP
+           WHERE id = $4`,
+          [reply, user.employeeId, name, openClar.rows[0].id]
+        );
+      } else {
+        await c.query(
+          `INSERT INTO ticket_clarifications (ticket_id, question, asked_by_name, answer, answered_by, answered_by_name, answered_at)
+           VALUES ($1, $2, 'Reviewer', $3, $4, $5, CURRENT_TIMESTAMP)`,
+          [id, tk.clarification || "Clarification requested", reply, user.employeeId, name]
+        );
+      }
+    } catch (tblErr) {
+      console.warn("Could not update ticket_clarifications:", tblErr.message);
+    }
+
     const ticket = await applyUpdate(
       c,
       tk,
@@ -226,7 +280,7 @@ export const respondClarification = async (id, user, text) => {
 
   if (isDirect) {
     // Notify Support Team that clarification has been answered and ticket is in pool
-    const supportIds = await idsByRole("Support Team");
+    const supportIds = await supportIdsForCategory(ticket.category);
     await notify(supportIds, {
       ticketId: id,
       title: `Clarification answered · ${id}`,
@@ -287,7 +341,7 @@ export const releaseTicket = async (id, user) => {
     return { ticket, name };
   });
 
-  await notify(await idsByRole("Support Team", user.employeeId), {
+  await notify(await supportIdsForCategory(ticket.category, user.employeeId), {
     ticketId: id,
     title: `Ticket released · ${id}`,
     message: `Returned to the pool by ${name}.`,

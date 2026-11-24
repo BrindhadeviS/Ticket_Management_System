@@ -3,8 +3,9 @@ import { getPasswordError } from "../../utils/passwordRules.js";
 import {
   resetEmployeePassword,
   changePassword as updatePassword,
+  loginUser,
+  getMe,
 } from "./auth.service.js";
-import { loginUser } from "./auth.service.js";
 
 export const login = async (req, res, next) => {
   try {
@@ -18,6 +19,14 @@ export const login = async (req, res, next) => {
     }
 
     const result = await loginUser(email, password);
+
+    // Set HttpOnly cookie for session
+    res.cookie("token", result.token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 24 * 60 * 60 * 1000,
+    });
 
     res.status(200).json({
       success: true,
@@ -37,6 +46,33 @@ export const login = async (req, res, next) => {
 
     next(error);
   }
+};
+
+export const getMeController = async (req, res, next) => {
+  try {
+    const user = await getMe(req.user.employeeId);
+    res.status(200).json({
+      success: true,
+      data: user,
+    });
+  } catch (error) {
+    res.status(401).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+export const logout = async (req, res) => {
+  res.clearCookie("token", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+  });
+  res.status(200).json({
+    success: true,
+    message: "Logged out successfully",
+  });
 };
 
 export const updatePasswordController = async (req, res, next) => {

@@ -34,6 +34,7 @@ export const ROLE_NAV = {
     { key: "dash", label: "All Tickets Dashboard" },
     { key: "mine", label: "My Dashboard" },
     { key: "users", label: "Employees" },
+    { key: "masterData", label: "Master Data" },
     { key: "new", label: "New Ticket" },
     { key: "notifs", label: "Notifications" }
   ],
@@ -43,9 +44,8 @@ export const ROLE_NAV = {
     { key: "notifs", label: "Notifications" }
   ],
   Approver: [
-    { key: "dash", label: "All Tickets Dashboard" },
+    { key: "dash", label: "Dashboard" },
     { key: "mine", label: "My Dashboard" },
-    { key: "approvals", label: "Awaiting Approval" },
     { key: "new", label: "New Ticket" },
     { key: "notifs", label: "Notifications" }
   ],

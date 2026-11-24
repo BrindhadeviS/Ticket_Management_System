@@ -6,7 +6,7 @@ import { getPasswordError } from "../../utils/passwordRules.js";
 
 const ROLES = ["Employee", "Approver", "Support Team", "Admin"];
 const COLUMNS =
-  "employee_id, name, email, department, role, active, must_change_password";
+  "employee_id, name, email, department, role, active, must_change_password, manager_id";
 
 const checkName = (name) => {
   if (!/^[A-Za-z .'-]+$/.test(name))
@@ -41,6 +41,10 @@ export const createEmployee = async (data) => {
     .toLowerCase();
   const department = String(data.department || "").trim();
   const role = data.role || "Employee";
+  // Only Employee role requires/has a reporting manager; Admin, Approver, Support Team never have a manager
+  const managerId = role === "Employee"
+    ? (data.manager_id ? Number(data.manager_id) : (data.managerId ? Number(data.managerId) : null))
+    : null;
 
   checkName(name);
   checkEmail(email);
@@ -59,10 +63,10 @@ export const createEmployee = async (data) => {
 
   try {
     const { rows } = await pool.query(
-      `INSERT INTO employees (name, email, department, password_hash, role, active, must_change_password)
-       VALUES ($1, $2, $3, $4, $5, true, $6)
+      `INSERT INTO employees (name, email, department, password_hash, role, active, must_change_password, manager_id)
+       VALUES ($1, $2, $3, $4, $5, true, $6, $7)
        RETURNING ${COLUMNS}`,
-      [name, email, department, hash, role, generated],
+      [name, email, department, hash, role, generated, managerId],
     );
     return generated ? { ...rows[0], temporary_password: password } : rows[0];
   } catch (err) {
@@ -73,9 +77,11 @@ export const createEmployee = async (data) => {
 export const getAllEmployees = async (page = 1, limit = 20) => {
   const offset = (page - 1) * limit;
   const { rows } = await pool.query(
-    `SELECT e.employee_id, e.name, e.email, e.department, e.role, e.active,
+    `SELECT e.employee_id, e.name, e.email, e.department, e.role, e.active, e.manager_id,
+            m.name AS manager_name,
             (SELECT COUNT(*)::int FROM tickets t WHERE t.created_by = e.employee_id) AS ticket_count
      FROM employees e
+     LEFT JOIN employees m ON m.employee_id = e.manager_id
      ORDER BY e.employee_id
      LIMIT $1 OFFSET $2`,
     [limit, offset],
@@ -86,9 +92,11 @@ export const getAllEmployees = async (page = 1, limit = 20) => {
 // Legacy version for backward compatibility
 export const getAllEmployeesLegacy = async () => {
   const { rows } = await pool.query(
-    `SELECT e.employee_id, e.name, e.email, e.department, e.role, e.active,
+    `SELECT e.employee_id, e.name, e.email, e.department, e.role, e.active, e.manager_id,
+            m.name AS manager_name,
             (SELECT COUNT(*)::int FROM tickets t WHERE t.created_by = e.employee_id) AS ticket_count
      FROM employees e
+     LEFT JOIN employees m ON m.employee_id = e.manager_id
      ORDER BY e.employee_id`,
   );
   return rows;
@@ -96,7 +104,11 @@ export const getAllEmployeesLegacy = async () => {
 
 export const getEmployeeById = async (id) => {
   const { rows } = await pool.query(
-    `SELECT ${COLUMNS} FROM employees WHERE employee_id = $1`,
+    `SELECT e.employee_id, e.name, e.email, e.department, e.role, e.active, e.must_change_password, e.manager_id,
+            m.name AS manager_name
+     FROM employees e
+     LEFT JOIN employees m ON m.employee_id = e.manager_id
+     WHERE e.employee_id = $1`,
     [id],
   );
   return rows[0];
@@ -117,6 +129,25 @@ export const updateEmployee = async (id, data, currentUserId) => {
   const role = data.role ?? null;
   const active = data.active !== undefined ? Boolean(data.active) : null;
 
+  const currentEmp = await getEmployeeById(id);
+  const effectiveRole = role || currentEmp?.role || "Employee";
+
+  let managerId = null;
+  let hasManager = true;
+
+  if (effectiveRole === "Employee") {
+    hasManager = data.manager_id !== undefined || data.managerId !== undefined;
+    managerId = data.manager_id !== undefined
+      ? (data.manager_id ? Number(data.manager_id) : null)
+      : data.managerId !== undefined
+        ? (data.managerId ? Number(data.managerId) : null)
+        : (currentEmp?.manager_id ?? null);
+  } else {
+    // Admin, Approver, Support Team: always nullify manager
+    managerId = null;
+    hasManager = true;
+  }
+
   if (name !== null) checkName(name);
   if (email !== null) checkEmail(email);
   if (role !== null) checkRole(role);
@@ -131,18 +162,18 @@ export const updateEmployee = async (id, data, currentUserId) => {
   }
 
   try {
-    const { rows } = await pool.query(
+    await pool.query(
       `UPDATE employees
        SET name = COALESCE($1, name),
            email = COALESCE($2, email),
            department = COALESCE($3, department),
            role = COALESCE($4, role),
-           active = COALESCE($5, active)
-       WHERE employee_id = $6
-       RETURNING ${COLUMNS}`,
-      [name, email, department, role, active, id],
+           active = COALESCE($5, active),
+           manager_id = CASE WHEN $6::boolean THEN $7::int ELSE manager_id END
+       WHERE employee_id = $8`,
+      [name, email, department, role, active, hasManager, managerId, id],
     );
-    return rows[0];
+    return await getEmployeeById(id);
   } catch (err) {
     handleDbError(err);
   }

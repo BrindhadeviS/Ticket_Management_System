@@ -16,12 +16,14 @@ import {
   LogOut,
   Sun,
   Moon,
+  Database,
 } from "lucide-react";
 
 const NAV_ICONS = {
   dash: LayoutDashboard,
   mine: LayoutDashboard,
   users: Users,
+  masterData: Database,
   tickets: Ticket,
   new: Plus,
   notifs: Bell,
@@ -34,6 +36,7 @@ const NAV_ICONS = {
 export default function Sidebar() {
   const {
     me,
+    users,
     view,
     setView,
     setSel,
@@ -52,6 +55,7 @@ export default function Sidebar() {
   const pendingCount = tickets.filter(
     (ticket) =>
       ticket.status === "Pending Approval" &&
+      (me.role === "Admin" || Number(ticket.approver_id || ticket.approver) === Number(me.employee_id || me.id)) &&
       Number(ticket.by) !== Number(me.employee_id || me.id)
   ).length;
 
@@ -61,10 +65,7 @@ export default function Sidebar() {
       !notification.read
   ).length;
 
-  const poolCount =
-    poolTickets.length ||
-    tickets.filter((ticket) => ticket.status === "Open" && !ticket.assignee)
-      .length;
+  const poolCount = Array.isArray(poolTickets) ? poolTickets.length : 0;
 
   const handleNavClick = (key) => {
     setView(key);
@@ -108,21 +109,20 @@ export default function Sidebar() {
             key === "approvals"
               ? pendingCount
               : key === "notifs"
-              ? unreadCount
-              : key === "pool"
-              ? poolCount
-              : 0;
+                ? unreadCount
+                : key === "pool"
+                  ? poolCount
+                  : 0;
 
           return (
             <button
               key={key}
               type="button"
               onClick={() => handleNavClick(key)}
-              className={`flex items-center justify-between w-full px-3 py-2.5 rounded-lg text-sm transition-all text-left cursor-pointer ${
-                active
+              className={`flex items-center justify-between w-full px-3 py-2.5 rounded-lg text-sm transition-all text-left cursor-pointer ${active
                   ? "bg-[#6d5bb8] text-white font-bold shadow-xs"
                   : "text-[#d8d2ec] hover:bg-white/10 hover:text-white font-medium"
-              }`}
+                }`}
             >
               <div className="flex items-center gap-2.5 min-w-0">
                 <Icon size={16} className="flex-shrink-0" />
@@ -155,7 +155,16 @@ export default function Sidebar() {
           <small className="text-xs text-white/70 block truncate">
             {me.role}
           </small>
+          {(me.manager_name || users?.find((u) => Number(u.id || u.employee_id) === Number(me.manager_id))?.name) && (
+            <span className="text-[9px] text-white/70 block truncate mt-0.5">
+              Reporting to: {me.manager_name || users?.find((u) => Number(u.id || u.employee_id) === Number(me.manager_id))?.name}
+            </span>
+          )}
+          <span className="text-[11px] text-white/70 block truncate mt-0.5">
+            Dept: {me.department ?? "—"}
+          </span>
         </div>
+
 
         <div className="flex items-center gap-1">
           <button

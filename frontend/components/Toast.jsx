@@ -37,7 +37,7 @@ export default function Toast() {
             <button
               type="button"
               onClick={toast.onCancel}
-              className="rounded-lg border px-4 py-2 text-sm font-semibold transition hover:bg-black/5"
+              className="cursor-pointer rounded-lg border px-4 py-2 text-sm font-semibold transition hover:bg-black/5"
               style={{ borderColor: "var(--bd)", color: "var(--tx)" }}
             >
               Cancel
@@ -45,7 +45,7 @@ export default function Toast() {
             <button
               type="button"
               onClick={toast.onConfirm}
-              className="rounded-lg px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+              className="cursor-pointer rounded-lg px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
               style={{ backgroundColor: "var(--wr)" }}
             >
               Delete
