@@ -221,7 +221,7 @@ function SemiCirclePriorityChart({ priorityStats, className = "", compact = fals
                     >
                       <IconComponent size={10} />
                     </div>
-                    <span className="font-bold text-black dark:text-white truncate text-sm">
+                    <span className="font-bold text-black dark:text-white truncate text-xs">
                       {item.label}
                     </span>
                   </div>
